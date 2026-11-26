@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=78"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stackorion-example-inventory"
+version = "0.1.0"
+description = "Offline upstream adapter example for StackOrion"
+requires-python = ">=3.11"
+dependencies = ["stackorion==0.1.0"]
+
+[project.entry-points."stackorion.adapters"]
+example-inventory = "stackorion_example_inventory:InventoryAdapter"
+
+[tool.setuptools.packages.find]
+where = ["src"]

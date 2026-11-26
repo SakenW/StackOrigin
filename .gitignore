@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+*.db
+config/services.json
+
+.stackorion/
+config/website-monitors.json
+config/host-monitors.json
+
+.DS_Store
+/build/

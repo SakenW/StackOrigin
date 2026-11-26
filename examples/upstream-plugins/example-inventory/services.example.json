@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "accounts": [
+    {
+      "id": "example-account",
+      "provider": "example",
+      "label": "示例账号",
+      "scope": "project",
+      "verification": "declared"
+    }
+  ],
+  "services": [
+    {
+      "id": "example-inventory-local",
+      "kind": "python-adapter",
+      "provider": "example",
+      "account_id": "example-account",
+      "enabled": false,
+      "adapter": "example-inventory",
+      "settings": {
+        "targets": ["demo-site"]
+      }
+    }
+  ]
+}

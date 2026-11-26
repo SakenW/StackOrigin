@@ -1,0 +1,7 @@
+include config/services.example.json
+include tools/qshell/install.sh
+include tools/cloudflare-cli/install.sh
+include tools/cloudflare-cli/package.json
+include tools/cloudflare-cli/package-lock.json
+exclude README.md
+prune tests

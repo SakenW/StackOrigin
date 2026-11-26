@@ -1,0 +1,11 @@
+- insert:
+    - id: stackorion-dashboard-mcp
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: stackorion
+        transport: stdio
+        command: stackorion-dashboard-mcp
+        env:
+          STACKORION_DASHBOARD_URL: http://127.0.0.1:8765
+        toolCallTimeoutMs: 95000
+        failOnStartupError: true

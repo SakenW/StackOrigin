@@ -1,0 +1,30 @@
+{
+  "accounts": {
+    "tencent-prod": {"label":"腾讯云 · 生产","provider":"腾讯云","enabled":true,"checks":{"安全组":"complete","账务":"complete"}},
+    "qiniu-prod": {"label":"七牛云 · 生产","provider":"七牛云","enabled":true,"checks":{"实例":"complete"}},
+    "aliyun-teams": {"label":"阿里云 · 团队","provider":"阿里云","enabled":true,"checks":{"账务":"complete"}},
+    "tencent-sandbox": {"label":"腾讯云 · 测试","provider":"腾讯云","enabled":true,"checks":{"安全组":"partial","账务":"complete"},"reason":"安全组清单第二页超时","last_success":"2026-11-22T09:30:00+08:00"},
+    "spaceship-domains": {"label":"Spaceship · 域名","provider":"Spaceship","enabled":true,"checks":{"域名":"authorization_expired"},"reason":"OAuth 授权已过期","last_success":"2026-11-22T09:30:00+08:00"},
+    "qiniu-archive": {"label":"七牛云 · 归档","provider":"七牛云","enabled":false,"checks":{"实例":"disabled"}}
+  },
+  "assets": [
+    {"id":"domain-example-com","kind":"domain","name":"example.com","account":"spaceship-domains","registrar":"Spaceship","dns_provider":"腾讯云 DNSPod"},
+    {"id":"domain-example-net","kind":"domain","name":"example.net","account":"spaceship-domains","registrar":"Spaceship","dns_provider":"Spaceship"},
+    {"id":"ins-web-prod-01","kind":"server","server_type":"cloud","name":"web-prod-01","account":"tencent-prod","region":"ap-guangzhou","product":"腾讯云 CVM","billing":"postpaid"},
+    {"id":"ins-web-prod-02","kind":"server","server_type":"cloud","name":"web-prod-02","account":"tencent-prod","region":"ap-guangzhou","product":"腾讯云 CVM","billing":"postpaid"},
+    {"id":"lhins-demo-01","kind":"server","server_type":"lighthouse","name":"blog-light-01","account":"tencent-sandbox","region":"ap-guangzhou","product":"腾讯云 Lighthouse","billing":"prepaid"},
+    {"id":"sg-prod-web","kind":"security_group","name":"prod-web-sg","account":"tencent-prod","region":"ap-guangzhou","instances":["web-prod-01","web-prod-02"]}
+  ],
+  "balances": [
+    {"id":"tencent-prod-balance","name":"生产账号余额不足","account":"tencent-prod","metric":"RealBalance","amount":"86.40","currency":"CNY","threshold":"100.00"},
+    {"id":"aliyun-team-balance","name":"团队账号余额","account":"aliyun-teams","metric":"AvailableAmount","amount":"140.55","currency":"USD","threshold":"100.00"}
+  ],
+  "instances": [
+    {"id":"qvm-edge-01","name":"edge-gateway-01","account":"qiniu-prod","region":"华东 · 上海","billing":"prepaid","expires_at":"2026-11-26T09:30:00+08:00"},
+    {"id":"qvm-worker-01","name":"worker-01","account":"qiniu-prod","region":"华东 · 上海","billing":"postpaid","expires_at":null}
+  ],
+  "rules": [
+    {"id":"rule-ssh-01","name":"prod-web-sg","account":"tencent-prod","region":"ap-guangzhou","direction":"ingress","action":"allow","protocol":"tcp","source":"0.0.0.0/0","first_port":22,"last_port":22,"instances":["web-prod-01","web-prod-02"]},
+    {"id":"rule-private-02","name":"office-ssh","account":"tencent-prod","region":"ap-guangzhou","direction":"ingress","action":"allow","protocol":"tcp","source":"192.0.2.0/24","first_port":22,"last_port":22,"instances":["web-prod-01"]}
+  ]
+}

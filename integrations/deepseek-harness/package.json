@@ -1,0 +1,9 @@
+{
+  "name": "@stackorion/dsh-dashboard",
+  "version": "2026.11.23-4",
+  "private": true,
+  "description": "Review StackOrigin work items and operation records in DeepSeek Harness",
+  "engines": { "dsh": "0.2.2-rc.5" },
+  "files": ["cordis.patch.yml", "skills"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

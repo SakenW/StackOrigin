@@ -1,0 +1,275 @@
+{
+  "schema_version": 1,
+  "accounts": [
+    {"id": "qiniu-main", "provider": "qiniu", "label": "七牛账号（待核验）", "scope": "personal", "verification": "declared"},
+    {"id": "cloudflare-main", "provider": "cloudflare", "label": "Cloudflare 账号（待核验）", "scope": "personal", "verification": "declared"},
+    {"id": "aliyun-main", "provider": "aliyun", "label": "阿里云账号（待核验）", "scope": "personal", "verification": "declared"},
+    {"id": "tencent-main", "provider": "tencent", "label": "腾讯云账号（待核验）", "scope": "personal", "verification": "declared"},
+    {"id": "spaceship-main", "provider": "spaceship", "label": "Spaceship 账号（待核验）", "scope": "personal", "verification": "declared"}
+  ],
+  "resources": [],
+  "relations": [],
+  "services": [
+    {
+      "id": "qiniu-host-status-default",
+      "account_id": "qiniu-main",
+      "kind": "python-adapter",
+      "provider": "qiniu",
+      "adapter": "qiniu-host-status",
+      "enabled": false,
+      "settings": {
+        "script_path": "/absolute/path/to/server-management/qiniu_host_status.py",
+        "connection_file": "/absolute/path/to/server-management/.agent-env",
+        "targets": []
+      }
+    },
+    {
+      "id": "qiniu-kodo-objects-default",
+      "account_id": "qiniu-main",
+      "kind": "python-adapter",
+      "provider": "qiniu",
+      "adapter": "qiniu-kodo-objects",
+      "enabled": false,
+      "settings": {
+        "metadata_cli_path": "/absolute/path/to/stackorion-runtime/providers/qshell/qshell",
+        "credential_file": "/absolute/path/to/qiniu.env",
+        "foundation_root": "/absolute/path/to/server-management/qiniu-server-foundation",
+        "targets": [
+          {
+            "alias": "example",
+            "bucket": "example-bucket",
+            "s3_bucket": "example-bucket"
+          }
+        ],
+        "upload_roots": [
+          "/absolute/path/to/stackorion-data/kodo/uploads"
+        ],
+        "download_root": "/absolute/path/to/stackorion-data/kodo/downloads",
+        "max_transfer_bytes": 1073741824
+      }
+    },
+    {
+      "id": "qiniu-las-default",
+      "account_id": "qiniu-main",
+      "kind": "python-adapter",
+      "provider": "qiniu",
+      "adapter": "qiniu-las",
+      "enabled": false,
+      "settings": {
+        "script_path": "/absolute/path/to/服务器管理/qiniu_las_tool.py",
+        "credential_file": "/absolute/path/to/qiniu-readonly.env",
+        "targets": []
+      }
+    },
+    {
+      "id": "qiniu-default",
+      "account_id": "qiniu-main",
+      "kind": "python-adapter",
+      "provider": "qiniu",
+      "adapter": "qiniu-qvm",
+      "enabled": false,
+      "settings": {
+        "script_path": "/absolute/path/to/服务器管理/qiniu_qvm_tool.py",
+        "credential_file": "/absolute/path/to/qiniu-readonly.env",
+        "targets": []
+      }
+    },
+    {
+      "id": "cloudflare-default",
+      "account_id": "cloudflare-main",
+      "kind": "python-adapter",
+      "provider": "cloudflare",
+      "adapter": "cloudflare-zone",
+      "enabled": false,
+      "settings": {
+        "credential_file": "/absolute/path/to/cloudflare-readonly.env",
+        "targets": []
+      }
+    },
+    {
+      "id": "qiniu-kodo-default",
+      "account_id": "qiniu-main",
+      "kind": "python-adapter",
+      "provider": "qiniu",
+      "adapter": "qiniu-kodo",
+      "enabled": false,
+      "settings": {
+        "script_path": "/absolute/path/to/服务器管理/qiniu_kodo_tool.py",
+        "credential_file": "/absolute/path/to/qiniu-readonly.env",
+        "targets": []
+      }
+    },
+    {
+      "id": "qiniu-host-default",
+      "account_id": "qiniu-main",
+      "kind": "python-adapter",
+      "provider": "qiniu",
+      "adapter": "qiniu-host-capacity",
+      "enabled": false,
+      "settings": {
+        "script_path": "/absolute/path/to/服务器管理/qiniu_host_capacity.py",
+        "connection_file": "/absolute/path/to/服务器管理/.agent-env",
+        "targets": []
+      }
+    },
+    {
+      "id": "cloudflare-official",
+      "kind": "external-mcp",
+      "provider": "cloudflare",
+      "enabled": false,
+      "settings": {
+        "url": "https://mcp.cloudflare.com/mcp"
+      }
+    },
+    {
+      "id": "aliyun-default",
+      "account_id": "aliyun-main",
+      "kind": "python-adapter",
+      "provider": "aliyun",
+      "adapter": "aliyun-ecs",
+      "enabled": false,
+      "settings": {
+        "cli_path": "/absolute/path/to/aliyun",
+        "credential_file": "/absolute/path/to/aliyun-readonly.env",
+        "regions": []
+      }
+    },
+    {
+      "id": "tencent-default",
+      "account_id": "tencent-main",
+      "kind": "python-adapter",
+      "provider": "tencent",
+      "adapter": "tencent-edgeone",
+      "enabled": false,
+      "settings": {
+        "script_path": "/absolute/path/to/edgeone/eo-api.py",
+        "credential_file": "/absolute/path/to/tencent-cloud.env",
+        "targets": []
+      }
+    },
+    {
+      "id": "tencent-cvm-default",
+      "account_id": "tencent-main",
+      "kind": "python-adapter",
+      "provider": "tencent",
+      "adapter": "tencent-cvm",
+      "enabled": false,
+      "settings": {
+        "credential_file": "/absolute/path/to/tencent-cloud-readonly.env",
+        "product": "cvm",
+        "regions": []
+      }
+    },
+    {
+      "id": "tencent-lighthouse-default",
+      "account_id": "tencent-main",
+      "kind": "python-adapter",
+      "provider": "tencent",
+      "adapter": "tencent-lighthouse",
+      "enabled": false,
+      "settings": {
+        "credential_file": "/absolute/path/to/tencent-cloud-readonly.env",
+        "product": "lighthouse",
+        "regions": []
+      }
+    },
+    {
+      "id": "clarity-default",
+      "kind": "python-adapter",
+      "provider": "clarity",
+      "adapter": "clarity-multi",
+      "enabled": false,
+      "settings": {
+        "profiles": [{"alias": "site", "project_id": "example1234"}]
+      }
+    },
+    {
+      "id": "spaceship-default",
+      "account_id": "spaceship-main",
+      "kind": "python-adapter",
+      "provider": "spaceship",
+      "adapter": "spaceship-domains",
+      "enabled": false,
+      "settings": {
+        "credential_file": "/absolute/path/to/spaceship-readonly.env",
+        "targets": []
+      }
+    },
+    {
+      "id": "spaceship-official",
+      "kind": "external-mcp",
+      "provider": "spaceship",
+      "enabled": false,
+      "settings": {
+        "url": "https://mcp.spaceship.com/mcp"
+      }
+    },
+    {
+      "id": "jdcloud-dormant",
+      "kind": "dormant",
+      "provider": "jdcloud",
+      "enabled": false,
+      "settings": {}
+    },
+    {
+      "id": "cloudflare-domains-default",
+      "account_id": "cloudflare-main",
+      "kind": "python-adapter",
+      "provider": "cloudflare",
+      "adapter": "cloudflare-domains",
+      "enabled": false,
+      "settings": {
+        "credential_file": "/absolute/path/cloudflare-management.env",
+        "foundation_root": "/absolute/path/qiniu-server-foundation",
+        "account_id": "00000000000000000000000000000000"
+      }
+    },
+    {
+      "id": "spaceship-management-default",
+      "account_id": "spaceship-main",
+      "kind": "python-adapter",
+      "provider": "spaceship",
+      "adapter": "spaceship-management",
+      "enabled": false,
+      "settings": {
+        "credential_file": "/absolute/path/spaceship-management.env",
+        "foundation_root": "/absolute/path/qiniu-server-foundation"
+      }
+    },
+    {
+      "id": "tencent-management-default",
+      "account_id": "tencent-main",
+      "kind": "python-adapter",
+      "provider": "tencent",
+      "adapter": "tencent-management",
+      "enabled": false,
+      "settings": {
+        "credential_file": "/absolute/path/tencent-management.env",
+        "backup_inventory": false,
+        "billing_anomaly": false,
+        "account_id": "<verified-account-id>",
+        "regions": [
+          "ap-guangzhou"
+        ],
+        "foundation_root": "/absolute/path/qiniu-server-foundation"
+      }
+    },
+    {
+      "id": "aliyun-management-default",
+      "account_id": "aliyun-main",
+      "kind": "python-adapter",
+      "provider": "aliyun",
+      "adapter": "aliyun-management",
+      "enabled": false,
+      "settings": {
+        "credential_file": "/absolute/path/aliyun-management.env",
+        "account_id": "<verified-account-id>",
+        "regions": [
+          "cn-hangzhou"
+        ],
+        "foundation_root": "/absolute/path/qiniu-server-foundation",
+        "cli_path": "/absolute/path/aliyun"
+      }
+    }
+  ]
+}

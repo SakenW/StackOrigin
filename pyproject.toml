@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=78"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stackorion"
+version = "2026.11.25.1"
+description = "StackOrigin operations workspace and MCP server"
+readme = "src/stackorion/INSTALL.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = ["mcp==2.2.0"]
+
+[project.optional-dependencies]
+tencent = ["tencentcloud-sdk-python-common==3.1.211"]
+
+[project.scripts]
+stackorion = "stackorion.cli:main"
+stackorion-dashboard = "stackorion.dashboard:main"
+stackorion-mcp = "stackorion.server:main"
+stackorion-dashboard-mcp = "stackorion.dashboard_mcp:main"
+stackorion-save-spaceship-key = "stackorion.credentials_setup:main"
+stackorion-backup = "stackorion.backup:main"
+stackorion-clarity-mcp = "stackorion.clarity_official:main"
+stackorion-spaceship-login = "stackorion.spaceship_login:main"
+
+[project.entry-points."stackorion.adapters"]
+linux-ssh-host = "stackorion.linux_ssh_metrics:LinuxSSHAdapter"
+qiniu-qvm = "stackorion.qiniu:QiniuQVMAdapter"
+qiniu-las = "stackorion.qiniu_las:QiniuLASAdapter"
+qiniu-kodo = "stackorion.qiniu_kodo:QiniuKodoAdapter"
+qiniu-kodo-objects = "stackorion.kodo_objects:KodoObjectsAdapter"
+qiniu-host-capacity = "stackorion.qiniu_host:QiniuHostCapacityAdapter"
+qiniu-host-status = "stackorion.qiniu_host_status:QiniuHostStatusAdapter"
+qiniu-host-diagnostics = "stackorion.qiniu_host_diagnostics:QiniuHostDiagnosticsAdapter"
+qiniu-cdn = "stackorion.qiniu_cdn:QiniuCDNAdapter"
+qiniu-kodo-admin = "stackorion.kodo_admin:KodoAdminAdapter"
+qiniu-kodo-bucket-policy = "stackorion.kodo_admin:KodoAdminAdapter"
+qiniu-instance-lifecycle = "stackorion.qiniu_instance:QiniuInstanceAdapter"
+spaceship-domains = "stackorion.spaceship:SpaceshipDomainsAdapter"
+clarity-multi = "stackorion.clarity_multi:ClarityMultiAdapter"
+cloudflare-zone = "stackorion.cloudflare:CloudflareZoneAdapter"
+cloudflare-domains = "stackorion.cloudflare_domains:CloudflareDomainsAdapter"
+spaceship-management = "stackorion.spaceship_management:SpaceshipManagementAdapter"
+tencent-management = "stackorion.tencent_management:TencentManagementAdapter"
+aliyun-management = "stackorion.aliyun_management:AliyunManagementAdapter"
+tencent-edgeone = "stackorion.tencent:TencentEdgeOneAdapter"
+aliyun-ecs = "stackorion.aliyun:AliyunECSAdapter"
+tencent-cvm = "stackorion.tencent_compute:TencentComputeAdapter"
+tencent-lighthouse = "stackorion.tencent_compute:TencentComputeAdapter"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.entry-points."stackorion.operations"]
+qiniu-qvm = "stackorion.qiniu_operations:QiniuQVMOperations"
+qiniu-kodo-objects = "stackorion.kodo_operations:KodoOperations"
+qiniu-cdn = "stackorion.qiniu_cdn_operations:QiniuCDNOperations"
+qiniu-kodo-admin = "stackorion.kodo_admin_operations:KodoAdminOperations"
+qiniu-kodo-bucket-policy = "stackorion.kodo_bucket_operations:KodoBucketOperations"
+qiniu-instance-lifecycle = "stackorion.qiniu_instance_operations:QiniuInstanceOperations"
+cloudflare-domains = "stackorion.cloudflare_domain_operations:CloudflareDomainOperations"
+spaceship-management = "stackorion.spaceship_domain_operations:SpaceshipDomainOperations"
+tencent-management = "stackorion.tencent_management_operations:TencentManagementOperations"
+aliyun-management = "stackorion.aliyun_management_operations:AliyunManagementOperations"
+
+[tool.setuptools.package-data]
+stackorion = ["INSTALL.md", "management_capabilities.json", "cloudflare_cli_runner.mjs", "web/*.html", "web/*.css", "web/*.js", "web/*.json", "web/stackorion-brand.svg", "web/favicon.ico", "web/lucide-license.txt", "web/uplot-license.txt"]

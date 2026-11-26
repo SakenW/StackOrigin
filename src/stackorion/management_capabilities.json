@@ -1,0 +1,1741 @@
+{
+  "schema_version": 1,
+  "audit_date": "2026-10-13",
+  "foundation_registered_count": 30,
+  "foundation_mutating_count": 22,
+  "capabilities": [
+    {
+      "id": "las.instance-audit",
+      "owner": "server-management",
+      "source": "qiniu_las_tool.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_target:qiniu-las-default"
+      ],
+      "execution_note": "需启用独立 LAS 服务并重载客户端；云实例查询不代表 SSH、HTTP 或部署验收"
+    },
+    {
+      "id": "deployment.oci-benchmark.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-oci-benchmark.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "deployment.release-control.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-release.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "deployment.preview.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-preview.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "deployment.preview-transport.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-preview-transport.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "deployment.plan.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-deployment-plan.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "deployment.contract-verify.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-contract.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.buildkit-cache-prune.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-buildkit-prune.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.capacity-audit.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-capacity-audit.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_target:qiniu-host-default"
+      ],
+      "execution_note": "已验证指定主机只读容量查询"
+    },
+    {
+      "id": "host.capacity-reservation.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-capacity-reservation.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.docker-tag-delete.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-docker-tag-delete.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.destructive-maintenance-journal.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-destructive-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.destructive-maintenance-journal.v2",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-destructive-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.release-archive-delete.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-release-archive-delete.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.stage-lock.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-stage-lock.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.source-root-plan.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-source-root-plan.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "host.source-root-delete.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-source-root-delete.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "kodo.copy-object.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_copy",
+        "apply_kodo_copy",
+        "get_kodo_operation"
+      ],
+      "execution_note": "同空间精确源/目标 key，目标必须不存在，服务端force=false，双对象锁、摘要与三项目标确认，读回和未知结果不重放；真实只读预览通过，执行未真实验收"
+    },
+    {
+      "id": "kodo.rename-object.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_rename",
+        "apply_kodo_rename",
+        "get_kodo_operation"
+      ],
+      "execution_note": "同空间精确源/目标 key，目标必须不存在，服务端force=false，双对象锁、摘要与三项目标确认，读回和未知结果不重放；真实只读预览通过，执行未真实验收"
+    },
+    {
+      "id": "kodo.delete-object.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_object_deletion",
+        "apply_kodo_object_deletion",
+        "get_kodo_operation"
+      ],
+      "execution_note": "独立单对象插件复用 Foundation delete_keys，一次仅一个精确 key；预览、摘要、空间/key 确认、锁、日志和读回；当前客户端真实预览及 132 字节独立测试对象 MCP 删除、stat、缓存回执验证通过，本地测试文件已清理；没有服务端版本条件，外部并发写入需停止"
+    },
+    {
+      "id": "kodo.batch-delete.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-kodo.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "kodo.download.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-kodo.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_download",
+        "apply_kodo_download",
+        "get_kodo_operation"
+      ],
+      "execution_note": "复用 Foundation S3 签名，公共 HTTPS 流式下载到私有目录；校验哈希并禁止覆盖；143 字节独立对象真实下载及本地哈希/权限校验通过，大文件未真实验收"
+    },
+    {
+      "id": "kodo.list.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-kodo.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "list_kodo_objects"
+      ],
+      "execution_note": "单页查询，limit 1..1000，显式续页；10 个已登记空间真实只读查询成功"
+    },
+    {
+      "id": "kodo.object-lifecycle.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-kodo.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "kodo.put.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-kodo.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_upload",
+        "apply_kodo_upload",
+        "get_kodo_operation"
+      ],
+      "execution_note": "仅新增对象，复用 Foundation put_file 与 insertOnly；精确计划、摘要、操作日志和读回；143 字节独立对象真实上传及读回通过，大文件未真实验收"
+    },
+    {
+      "id": "kodo.stat.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-kodo.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "stat_kodo_object"
+      ],
+      "execution_note": "对象元数据查询，区分不存在与查询失败；7 个非空空间样本验证成功"
+    },
+    {
+      "id": "kodo.upload-download-probe.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-kodo-probe.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "postgres.isolated-restore.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-postgres-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "postgres.live-restore.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-postgres-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "postgres.role-summary.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-postgres-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "postgres.runtime-role-fence-install.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-postgres-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "postgres.runtime-role-fence-release.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-postgres-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "postgres.runtime-role-leaf-fence.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-postgres-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "postgres.snapshot.v1",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation-postgres-maintenance.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "按原正式入口及所属项目授权执行；此条仅登记能力"
+    },
+    {
+      "id": "qvm.inventory",
+      "owner": "server-management",
+      "source": "qiniu_qvm_tool.py",
+      "source_scope": "stackorion-worktree",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "discover_service:qiniu-default"
+      ],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "qvm.instance-audit",
+      "owner": "server-management",
+      "source": "qiniu_qvm_tool.py",
+      "source_scope": "stackorion-worktree",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_target:qiniu-default"
+      ],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "qvm.allow-port",
+      "owner": "server-management",
+      "source": "qiniu_qvm_tool.py",
+      "source_scope": "stackorion-worktree",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_qiniu_port_access",
+        "apply_qiniu_port_access"
+      ],
+      "execution_note": "真实只读预览和离线变更/读回/防重放测试通过；未进行生产写入验收。执行由客户端对精确计划批准，摘要只检查状态变化，不代表人的授权。"
+    },
+    {
+      "id": "qvm.delete-ingress-rule",
+      "owner": "server-management",
+      "source": "qiniu_qvm_tool.py",
+      "source_scope": "stackorion-worktree",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_qiniu_rule_deletion",
+        "apply_qiniu_rule_deletion"
+      ],
+      "execution_note": "精确安全组与规则 ID、完整分页计划、状态检查与删除后读回已接入；本地异常和防重放测试通过。安全组影响所有关联实例，尚未进行生产写入验收。"
+    },
+    {
+      "id": "kodo.bucket-inventory",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_cli.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "discover_service:qiniu-kodo-default"
+      ],
+      "execution_note": "官方 qshell v2.22.1 元数据查询；凭据私有隔离，真实对照通过；不调用写命令。"
+    },
+    {
+      "id": "kodo.bucket-domains",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_cli.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_target:qiniu-kodo-default"
+      ],
+      "execution_note": "官方 qshell v2.22.1 元数据查询；凭据私有隔离，真实对照通过；不调用写命令。"
+    },
+    {
+      "id": "host.service-status",
+      "owner": "server-management",
+      "source": "qiniu_host_status.py",
+      "source_scope": "stackorion-worktree",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_qiniu_services"
+      ],
+      "execution_note": "固定 systemd 与最近50个容器元数据，不含 env、命令或原始日志；真实只读查询通过"
+    },
+    {
+      "id": "backup.latest-local-status",
+      "owner": "server-management",
+      "source": "qiniu_host_status.py",
+      "source_scope": "stackorion-worktree",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_qiniu_backups"
+      ],
+      "execution_note": "固定本地成功标记及声明制品存在/非空计数；不执行备份、回收或恢复，不代表云端或可恢复性验证"
+    },
+    {
+      "id": "host.system-snapshot",
+      "owner": "server-management",
+      "source": "qiniu_host_capacity.py",
+      "source_scope": "stackorion-worktree",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_target:qiniu-host-default"
+      ],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "backup.postgres",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/backup-postgres.sh",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "backup.kodo",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/backup-kodo.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "backup.restore-drill",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/restore-drill.sh",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "backup.configure-kodo",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/update-qiniu-backup-env.py",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "runtime.verify",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/verify-app-runtime.sh",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "openresty.switch",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/switch-openresty-upstream.sh",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "project-owned",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "foundation.install-checkout",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/install-versioned-checkout.sh",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "not-connected",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "deployment.migration-gate",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/gates/migration-gate.sh",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "internal",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "deployment.release-manifest",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/gates/release-manifest.sh",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "internal",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "foundation.verify-registry",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/verify-capability-registry.py",
+      "source_scope": "server-base",
+      "mutates": false,
+      "mcp_status": "internal",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "workflow.server-ops",
+      "owner": "server-management",
+      "source": ".codex/skills/server-ops-maintenance/SKILL.md",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "workflow.maas",
+      "owner": "server-management",
+      "source": ".agents/skills/maas/SKILL.md",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+    },
+    {
+      "id": "qvm.create-instance",
+      "owner": "provider-adapter",
+      "source": null,
+      "source_scope": null,
+      "mutates": true,
+      "mcp_status": "implementation-missing",
+      "mcp_tools": [],
+      "execution_note": "需核对当前官方接口并实现；仓库中尚无正式操作封装"
+    },
+    {
+      "id": "qvm.restart-instance",
+      "owner": "provider-adapter",
+      "source": null,
+      "source_scope": null,
+      "mutates": true,
+      "mcp_status": "implementation-missing",
+      "mcp_tools": [],
+      "execution_note": "需核对当前官方接口并实现；仓库中尚无正式操作封装"
+    },
+    {
+      "id": "qvm.resize-instance",
+      "owner": "provider-adapter",
+      "source": null,
+      "source_scope": null,
+      "mutates": true,
+      "mcp_status": "implementation-missing",
+      "mcp_tools": [],
+      "execution_note": "需核对当前官方接口并实现；仓库中尚无正式操作封装"
+    },
+    {
+      "id": "qvm.create-disk",
+      "owner": "provider-adapter",
+      "source": null,
+      "source_scope": null,
+      "mutates": true,
+      "mcp_status": "implementation-missing",
+      "mcp_tools": [],
+      "execution_note": "需核对当前官方接口并实现；仓库中尚无正式操作封装"
+    },
+    {
+      "id": "qvm.create-network",
+      "owner": "provider-adapter",
+      "source": null,
+      "source_scope": null,
+      "mutates": true,
+      "mcp_status": "implementation-missing",
+      "mcp_tools": [],
+      "execution_note": "需核对当前官方接口并实现；仓库中尚无正式操作封装"
+    },
+    {
+      "id": "qiniu.billing",
+      "owner": "provider-adapter",
+      "source": null,
+      "source_scope": null,
+      "mutates": false,
+      "mcp_status": "implementation-missing",
+      "mcp_tools": [],
+      "execution_note": "需核对当前官方接口并实现；仓库中尚无正式操作封装"
+    },
+    {
+      "id": "panel.manage-apps",
+      "owner": "provider-adapter",
+      "source": null,
+      "source_scope": null,
+      "mutates": true,
+      "mcp_status": "implementation-missing",
+      "mcp_tools": [],
+      "execution_note": "需核对当前官方接口并实现；仓库中尚无正式操作封装"
+    },
+    {
+      "id": "internal.foundation-host-cleanup",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation_host_cleanup.py",
+      "source_scope": "server-base",
+      "mutates": null,
+      "mcp_status": "internal",
+      "mcp_tools": [],
+      "execution_note": "内部实现模块，由正式入口调用，不能当作独立用户操作工具"
+    },
+    {
+      "id": "internal.foundation-operation",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation_operation.py",
+      "source_scope": "server-base",
+      "mutates": null,
+      "mcp_status": "internal",
+      "mcp_tools": [],
+      "execution_note": "内部实现模块，由正式入口调用，不能当作独立用户操作工具"
+    },
+    {
+      "id": "internal.foundation-source-root-delete",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation_source_root_delete.py",
+      "source_scope": "server-base",
+      "mutates": null,
+      "mcp_status": "internal",
+      "mcp_tools": [],
+      "execution_note": "内部实现模块，由正式入口调用，不能当作独立用户操作工具"
+    },
+    {
+      "id": "internal.foundation-source-root-plan",
+      "owner": "server-foundation",
+      "source": "qiniu-server-foundation/scripts/foundation_source_root_plan.py",
+      "source_scope": "server-base",
+      "mutates": null,
+      "mcp_status": "internal",
+      "mcp_tools": [],
+      "execution_note": "内部实现模块，由正式入口调用，不能当作独立用户操作工具"
+    },
+    {
+      "id": "runtime.database-bootstrap",
+      "owner": "server-management",
+      "source": "qiniu-server-foundation/init/postgres/01-init.sh",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "现有操作手册或初始化流程，尚未封装为 MCP 执行器"
+    },
+    {
+      "id": "workflow.ssh-firewall",
+      "owner": "server-management",
+      "source": ".codex/skills/server-ops-maintenance/references/server-hardening.md",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "现有操作手册或初始化流程，尚未封装为 MCP 执行器"
+    },
+    {
+      "id": "workflow.panel-docker",
+      "owner": "server-management",
+      "source": ".codex/skills/server-ops-maintenance/references/qiniu-1panel-production-lessons.md",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "现有操作手册或初始化流程，尚未封装为 MCP 执行器"
+    },
+    {
+      "id": "workflow.shared-runtime",
+      "owner": "server-management",
+      "source": ".codex/skills/server-ops-maintenance/references/shared-runtime-infra.md",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "现有操作手册或初始化流程，尚未封装为 MCP 执行器"
+    },
+    {
+      "id": "workflow.dns-cdn",
+      "owner": "server-management",
+      "source": ".codex/skills/server-ops-maintenance/references/tencent-cloud-domain-ops.md",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "现有操作手册或初始化流程，尚未封装为 MCP 执行器"
+    },
+    {
+      "id": "workflow.fusion-cdn",
+      "owner": "server-management",
+      "source": ".codex/skills/server-ops-maintenance/references/qiniu-fusion-cdn.md",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "现有操作手册或初始化流程，尚未封装为 MCP 执行器"
+    },
+    {
+      "id": "workflow.project-onboarding",
+      "owner": "server-management",
+      "source": ".codex/skills/server-ops-maintenance/templates/new-project-deployment-onboarding.md",
+      "source_scope": "server-base",
+      "mutates": true,
+      "mcp_status": "skill-workflow",
+      "mcp_tools": [],
+      "execution_note": "现有操作手册或初始化流程，尚未封装为 MCP 执行器"
+    },
+    {
+      "id": "kodo.change-mime.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_admin_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_mime_change",
+        "apply_kodo_mime_change",
+        "get_kodo_admin_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "kodo.change-storage-class.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_admin_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_storage_class_change",
+        "apply_kodo_storage_class_change",
+        "get_kodo_admin_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "kodo.restore-archive.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_admin_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_archive_restore",
+        "apply_kodo_archive_restore",
+        "get_kodo_admin_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "kodo.delete-after-days.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_admin_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_delete_after_days",
+        "apply_kodo_delete_after_days",
+        "get_kodo_admin_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "kodo.change-status.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_admin_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_status_change",
+        "apply_kodo_status_change",
+        "get_kodo_admin_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "kodo.bucket-privacy.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_bucket_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_kodo_bucket_privacy",
+        "apply_kodo_bucket_privacy",
+        "get_kodo_bucket_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "qvm.start",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_instance_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_qiniu_instance_action",
+        "apply_qiniu_instance_action",
+        "get_qiniu_instance_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "qvm.stop",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_instance_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_qiniu_instance_action",
+        "apply_qiniu_instance_action",
+        "get_qiniu_instance_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "qvm.reboot",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_instance_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_qiniu_instance_action",
+        "apply_qiniu_instance_action",
+        "get_qiniu_instance_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "cdn.change.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_cdn_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_qiniu_cdn_change",
+        "apply_qiniu_cdn_change",
+        "get_qiniu_cdn_operation"
+      ],
+      "execution_note": "集中接入；先计划、精确确认、持久回执和禁止未知请求重放。真实查询/部分预览通过，写入未真实验收，异步及策略限制见docs/qiniu-batch-management.md。"
+    },
+    {
+      "id": "host.journal-metadata",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_host_diagnostics.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_qiniu_journal"
+      ],
+      "execution_note": "限定元数据查询，真实查询和本地测试覆盖见集中验收记录；任务查询未做真实请求验收。"
+    },
+    {
+      "id": "host.container-health",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_host_diagnostics.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_qiniu_container"
+      ],
+      "execution_note": "限定元数据查询，真实查询和本地测试覆盖见集中验收记录；任务查询未做真实请求验收。"
+    },
+    {
+      "id": "kodo.bucket-config-statistics",
+      "owner": "stackorion",
+      "source": "src/stackorion/kodo_admin.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_kodo_bucket_config",
+        "list_kodo_bucket_domains",
+        "query_kodo_storage_statistics"
+      ],
+      "execution_note": "限定元数据查询，真实查询和本地测试覆盖见集中验收记录；任务查询未做真实请求验收。"
+    },
+    {
+      "id": "cdn.inventory-statistics",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_cdn.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "list_qiniu_cdn_domains",
+        "inspect_qiniu_cdn_domain",
+        "list_qiniu_cdn_certificates",
+        "query_qiniu_cdn_usage",
+        "query_qiniu_cdn_tasks"
+      ],
+      "execution_note": "限定元数据查询，真实查询和本地测试覆盖见集中验收记录；任务查询未做真实请求验收。"
+    },
+    {
+      "id": "cloudflare.dns-create.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/cloudflare_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "cloudflare.dns-update.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/cloudflare_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "cloudflare.dns-delete.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/cloudflare_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "cloudflare.cache-purge-urls.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/cloudflare_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "cloudflare.cache-purge-all.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/cloudflare_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "cloudflare.setting-set.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/cloudflare_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "cloudflare.domain-inventory",
+      "owner": "stackorion",
+      "source": "src/stackorion/cloudflare_domains.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "query_service"
+      ],
+      "execution_note": "查询先验证账号与域名归属；DNS与HTTPS独立报告，不把控制面成功当作传播完成。"
+    },
+    {
+      "id": "cloudflare.domain-delivery",
+      "owner": "stackorion",
+      "source": "src/stackorion/domain_delivery.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_domain_delivery"
+      ],
+      "execution_note": "查询先验证账号与域名归属；DNS与HTTPS独立报告，不把控制面成功当作传播完成。"
+    },
+    {
+      "id": "spaceship.nameservers.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "spaceship.dns-add.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "spaceship.dns-delete.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "spaceship.dns-update-ttl.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "spaceship.auto-renew.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "spaceship.transfer-lock.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "spaceship.privacy.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "spaceship.dns-replace.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。"
+    },
+    {
+      "id": "spaceship.receipt-resolve.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_domain_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "先预览绑定精确目标与当前状态，再执行；本批写路径仅离线验收，未改真实域名。本操作只更新本地回执，云端仅 GET。"
+    },
+    {
+      "id": "spaceship.domain-inventory",
+      "owner": "stackorion",
+      "source": "src/stackorion/spaceship_management.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "query_service"
+      ],
+      "execution_note": "查询先验证账号与域名归属；DNS与HTTPS独立报告，不把控制面成功当作传播完成。"
+    },
+    {
+      "id": "spaceship.domain-delivery",
+      "owner": "stackorion",
+      "source": "src/stackorion/domain_delivery.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "inspect_domain_delivery"
+      ],
+      "execution_note": "查询先验证账号与域名归属；DNS与HTTPS独立报告，不把控制面成功当作传播完成。"
+    },
+    {
+      "id": "tencent.cbs-snapshot-create.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.cvm-reboot.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.cvm-start.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.cvm-stop.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.dns-create.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.dns-delete.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.dns-update.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.edge-origin-protocol.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.edge-preheat.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.edge-purge.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.firewall-add.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.firewall-delete.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.firewall-description.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.lighthouse-reboot.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.lighthouse-snapshot-create.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.lighthouse-start.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.lighthouse-stop.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.receipt-adopt.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。仅本地回执采纳，云端查询不重发。"
+    },
+    {
+      "id": "tencent.sg-add.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.sg-delete.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "tencent.management-inventory",
+      "owner": "stackorion",
+      "source": "src/stackorion/tencent_management.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "list_service_capabilities",
+        "query_service"
+      ],
+      "execution_note": "独立身份绑定及受限查询。腾讯真实查询覆盖见集中验收；阿里RAM的ECS/DNS/CDN权限缺口保留，不标记为空。"
+    },
+    {
+      "id": "aliyun.cdn-preheat.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.cdn-refresh.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.dns-create.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.dns-delete.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.dns-status.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.dns-update.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.instance-reboot.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.instance-rename.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.instance-start.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.instance-stop.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.receipt-adopt.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。仅本地回执采纳，云端查询不重发。"
+    },
+    {
+      "id": "aliyun.sg-authorize.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.sg-revoke.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.snapshot-create.v1",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management_operations.py",
+      "source_scope": "stackorion",
+      "mutates": true,
+      "mcp_status": "operation-connected",
+      "mcp_tools": [
+        "plan_service_operation",
+        "apply_service_operation",
+        "get_service_operation"
+      ],
+      "execution_note": "精确账号、地域与资源预览后执行；使用持久回执、锁和未知结果围栏。本批写入仅离线验收。"
+    },
+    {
+      "id": "aliyun.management-inventory",
+      "owner": "stackorion",
+      "source": "src/stackorion/aliyun_management.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "list_service_capabilities",
+        "query_service"
+      ],
+      "execution_note": "独立身份绑定及受限查询。腾讯真实查询覆盖见集中验收；阿里RAM的ECS/DNS/CDN权限缺口保留，不标记为空。"
+    }
+  ],
+  "mutation_flag_note": "Foundation 的 mutates 是发布字段；下载、计划保存和锁也可能写本地文件，不能仅按该字段判断权限。"
+}

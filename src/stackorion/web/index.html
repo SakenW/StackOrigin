@@ -1,0 +1,511 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="StackOrigin（源栈）运维工作台">
+  <title>StackOrigin · 源栈</title>
+  <link rel="icon" href="/favicon.ico" sizes="16x16" type="image/x-icon">
+  <link rel="stylesheet" href="/uPlot.min.css">
+  <link rel="stylesheet" href="/dashboard.css">
+  <script src="/uPlot.iife.min.js" defer></script>
+  <script type="module" src="/dashboard.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">跳到巡检内容</a>
+  <aside class="sidebar">
+    <a href="/" class="brand">
+      <img src="/stackorion-brand.svg" width="673" height="104" alt="StackOrigin">
+      <small>源栈</small>
+    </a>
+    <span class="demo-tag mobile-demo"><i></i>本地连接</span>
+    <nav aria-label="工作台导航">
+      <a href="#main" class="nav-link current" aria-current="page"><span data-icon="grid"></span>工作台</a>
+      <a href="#findings" class="nav-link"><span data-icon="list"></span>巡检发现</a>
+      <a href="#work-items" class="nav-link"><span data-icon="clipboard"></span>巡检待办</a>
+      <a href="#websites" class="nav-link"><span data-icon="activity"></span>网站监控</a>
+      <a href="#servers" class="nav-link"><span data-icon="server"></span>服务器监控</a>
+      <a href="#assets" class="nav-link"><span data-icon="server"></span>资产分类</a>
+      <a href="#coverage" class="nav-link"><span data-icon="layers"></span>账号覆盖</a>
+      <a href="#operation-records" class="nav-link"><span data-icon="clipboard"></span>操作记录</a>
+      <a href="#settings" class="nav-link"><span data-icon="lock"></span>设置</a>
+      <a href="#storage" class="nav-link"><span data-icon="database"></span>数据与存储</a>
+    </nav>
+    <div class="workspace"><span class="workspace-icon" data-icon="terminal"></span><span>本地连接<small>只读巡检</small></span></div>
+  </aside>
+  <div class="shell">
+    <header class="topbar">
+      <div class="breadcrumb"><span>运维工作台</span><span data-icon="chevron"></span><strong>工作台</strong></div>
+      <span id="mode-tag" class="demo-tag"><i></i><span id="mode-name">本地连接</span></span>
+    </header>
+    <main id="main" tabindex="-1">
+      <section class="intro" aria-labelledby="title">
+        <div><h1 id="title">运维总览</h1><p class="run-meta"><span data-icon="calendar"></span><time id="observed">等待巡检结果</time><span class="meta-divider"></span><span id="run-status" role="status">加载中</span></p></div>
+        <div class="toolbar">
+          <label id="mock-control" class="mock-control" hidden><input type="checkbox" id="show-mock" checked>显示模拟数据</label>
+          <label id="scenario-control" class="scenario" hidden><span class="sr-only">演示场景</span><select id="scenario"><option value="daily">1 · 首次命中</option><option value="repeat">2 · 重复命中</option><option value="missed">3 · 复查漏查</option><option value="empty">4 · 复查已恢复</option></select></label>
+          <button class="primary" id="run" type="button"><span data-icon="refresh"></span>重新巡检</button>
+        </div>
+      </section>
+      <div id="error" class="error" role="alert" hidden></div>
+      <section id="inspection-start" class="panel inspection-start" aria-labelledby="inspection-start-title" hidden>
+        <div><h2 id="inspection-start-title"></h2><p id="inspection-start-description"></p></div>
+        <a id="inspection-setup-link" class="primary" href="#settings">接入服务<span data-icon="chevron"></span></a>
+      </section>
+      <section class="overview" aria-label="运维状态">
+        <div class="overview-grid">
+          <article class="panel overview-card">
+            <header><span class="metric-icon" data-icon="clipboard"></span><h2>待处理事项</h2></header>
+            <div id="overview-work" class="overview-value"><strong>—</strong><small>读取中</small></div>
+            <a href="#work-items">查看待办<span data-icon="chevron"></span></a>
+          </article>
+          <article class="panel overview-card">
+            <header><span class="metric-icon" data-icon="activity"></span><h2>网站监控</h2></header>
+            <div id="overview-web" class="overview-value"><strong>—</strong><small>读取中</small><div class="overview-bar" aria-hidden="true" hidden></div></div>
+            <a href="#websites">查看网站<span data-icon="chevron"></span></a>
+          </article>
+          <article class="panel overview-card">
+            <header><span class="metric-icon" data-icon="server"></span><h2>服务器监控</h2></header>
+            <div id="overview-host" class="overview-value"><strong>—</strong><small>读取中</small><div class="overview-bar" aria-hidden="true" hidden></div></div>
+            <a href="#servers">查看服务器<span data-icon="chevron"></span></a>
+          </article>
+          <article class="panel overview-card">
+            <header><span class="metric-icon" data-icon="layers"></span><h2>资产清单</h2></header>
+            <div id="overview-assets" class="overview-value"><strong>—</strong><small>读取中</small></div>
+            <a href="#assets">查看资产<span data-icon="chevron"></span></a>
+          </article>
+        </div>
+      </section>
+      <div class="inspection-overview">
+        <h2>每日巡检</h2>
+        <a href="#coverage" id="overview-coverage">查看账号覆盖<span data-icon="chevron"></span></a>
+      </div>
+      <section id="metrics" class="metrics" aria-label="巡检摘要" aria-busy="true"></section>
+      <p id="inspection-scope-note" class="inspection-plan-copy" hidden></p>
+      <details class="panel inspection-plan">
+        <summary>巡检计划 <span id="inspection-plan-state">读取中</span></summary>
+        <p id="inspection-plan-times" class="inspection-plan-copy"></p>
+        <p class="inspection-plan-copy" id="inspection-plan-scope">面板运行期间按计划巡检。默认间隔为 1440 分钟。</p>
+        <form id="inspection-plan-form" class="website-controls">
+          <label for="inspection-plan-interval" class="scenario">间隔（分钟）
+            <input id="inspection-plan-interval" class="monitor-interval" type="number" min="1" max="1440" step="1" value="1440" required aria-describedby="inspection-plan-scope">
+          </label>
+          <fieldset id="inspection-plan-accounts" class="inspection-plan-accounts">
+            <legend>巡检账号</legend>
+            <label for="inspection-plan-all-accounts"><input type="checkbox" id="inspection-plan-all-accounts" checked> 全部已启用账号</label>
+            <div id="inspection-plan-account-choices" hidden></div>
+          </fieldset>
+          <button id="inspection-plan-run-selection" class="monitor-secondary" type="button" hidden disabled>立即巡检所选账号</button>
+          <button id="inspection-plan-save" class="monitor-secondary" type="submit" disabled>启用定时</button>
+          <button id="inspection-plan-pause" class="monitor-secondary" type="button" disabled>暂停</button>
+        </form>
+        <p id="inspection-plan-feedback" class="inspection-plan-copy" role="status"></p>
+      </details>
+      <details id="inspection-history" class="panel inspection-plan">
+        <summary>巡检历史</summary>
+        <div class="website-controls">
+          <label id="inspection-history-source-control" class="scenario" hidden for="inspection-history-source">数据来源
+            <select id="inspection-history-source"><option value="live">真实连接</option><option value="synthetic">合成演练</option></select>
+          </label>
+          <button id="inspection-history-refresh" class="monitor-secondary" type="button">刷新历史</button>
+        </div>
+        <p id="inspection-history-status" class="inspection-plan-copy" role="status"></p>
+        <div id="inspection-history-rows" role="group" aria-label="按时间排列的巡检记录"></div>
+        <button id="inspection-history-more" class="monitor-secondary" type="button" hidden>更早记录</button>
+      </details>
+      <div class="columns">
+        <section id="findings" class="panel findings" aria-labelledby="findings-title">
+          <header class="panel-title"><div><h2 id="findings-title" tabindex="-1">巡检发现</h2><p id="finding-summary">正在读取结果</p></div><span class="panel-symbol" data-icon="list"></span></header>
+          <div class="filters" id="filters" aria-label="按问题类型筛选"></div>
+          <div class="table-label" aria-hidden="true"><span>问题与所属账号</span><span>观测结果</span><span></span></div>
+          <div id="rows" class="rows"></div>
+        </section>
+        <section id="coverage" class="panel" aria-labelledby="coverage-title">
+          <header class="panel-title"><div><h2 id="coverage-title">账号覆盖</h2><p>本轮查询范围</p></div><span class="panel-symbol" data-icon="layers"></span></header>
+          <div id="coverage-chart" class="coverage-chart"></div>
+          <ul id="coverage-legend" class="legend" aria-label="账号覆盖明细"></ul>
+          <div class="accounts-head"><h3>账号明细</h3><span id="disabled"></span></div>
+          <div id="accounts" class="accounts"></div>
+        </section>
+      </div>
+      <section id="work-items" class="panel work-items" aria-labelledby="work-title">
+        <header class="panel-title"><div><h2 id="work-title" tabindex="-1">巡检待办</h2><p id="work-summary" role="status">等待巡检结果</p><p id="work-route-status" role="status"></p></div><span class="panel-symbol" data-icon="clipboard"></span></header>
+        <search aria-label="筛选巡检待办">
+          <div id="work-account-filter" class="operation-record-filters" hidden>
+            <label for="work-account">账号 / 来源</label>
+            <select id="work-account"><option value="">全部账号和来源</option></select>
+          </div>
+          <div id="work-filters" class="filters" role="group" aria-label="待办状态"></div>
+        </search>
+        <div id="work-rows"></div>
+      </section>
+      <section id="websites" class="panel work-items" aria-labelledby="website-title">
+        <header class="panel-title">
+          <div><h2 id="website-title" tabindex="-1">网站监控</h2><p id="website-status" role="status"></p></div>
+          <span class="panel-symbol" data-icon="activity"></span>
+        </header>
+        <details id="website-registration" class="monitor-registration" hidden>
+          <summary>添加网站</summary>
+          <form id="website-registration-form" method="post" action="/api/website-monitors">
+            <label>HTTPS URL <input id="website-registration-url" name="url" type="url" maxlength="2048"
+                                    placeholder="https://example.com/health" aria-describedby="website-registration-help" required></label>
+            <p id="website-registration-help">请输入公网 HTTPS 地址，支持路径。端口使用 443。</p>
+            <div class="website-registration-fields">
+              <label>预期 HTTP 状态码 <input name="expected_status" type="number" min="100" max="599" value="200" required></label>
+              <label>响应需包含的文字（可选） <input name="contains" maxlength="512"></label>
+            </div>
+            <button class="primary" type="submit">保存监控</button>
+          </form>
+        </details>
+        <p id="website-registration-status" class="website-certificate" role="status"></p>
+        <div id="website-controls" class="website-controls" hidden>
+          <label class="scenario">已登记 URL <select id="website-target"></select></label>
+          <label id="website-scenario-control" class="scenario" hidden>演示结果
+            <select id="website-scenario">
+              <option value="mismatch">200 · 内容不匹配</option>
+              <option value="timeout">复查超时</option>
+              <option value="recovered">200 · 内容已恢复</option>
+              <option value="certificate-due">200 · 证书剩余 12 天</option>
+              <option value="certificate-urgent">200 · 证书剩余 5 天</option>
+              <option value="certificate-missing">证书未取得</option>
+            </select>
+          </label>
+          <button class="primary" id="website-run" type="button"><span data-icon="refresh"></span>立即检测</button>
+        </div>
+        <details id="website-conditions" class="monitor-registration" hidden>
+          <summary id="website-conditions-label">编辑检测条件</summary>
+          <form id="website-conditions-form" method="post" aria-labelledby="website-conditions-label">
+            <p>更新后，原检测历史仍可查看，可用率按新条件重新统计。</p>
+            <div class="website-registration-fields">
+              <label for="website-expected-status">预期 HTTP 状态码
+                <input id="website-expected-status" name="expected_status" type="number" min="100" max="599" required>
+              </label>
+              <label for="website-content-action">响应文字校验
+                <select id="website-content-action" name="content_action">
+                  <option value="keep">保留当前设置</option><option value="replace">设置新的响应文字</option><option value="remove">关闭响应文字校验</option>
+                </select>
+              </label>
+            </div>
+            <label id="website-conditions-text" for="website-expected-text" hidden>响应需包含的文字
+              <input id="website-expected-text" name="contains" maxlength="512" disabled>
+            </label>
+            <button class="primary" type="submit">保存检测条件</button>
+          </form>
+        </details>
+        <p id="website-conditions-status" class="website-certificate" role="status"></p>
+        <div id="website-schedule" hidden>
+          <div id="website-schedule-stats" class="website-phases" aria-label="定时监控统计"></div>
+          <p id="website-coverage" class="website-certificate"></p>
+          <form id="website-schedule-form" class="website-controls">
+            <label class="scenario" for="website-interval">检测间隔（分钟）
+              <input id="website-interval" class="monitor-interval" type="number" min="1" max="1440" step="1" required>
+            </label>
+            <button class="primary" id="website-schedule-save" type="submit">启用定时</button>
+            <button id="website-pause" class="monitor-secondary" type="button">暂停</button>
+          </form>
+        </div>
+        <div id="website-results"></div>
+        <details id="website-previous-history" class="monitor-registration" hidden>
+          <summary>旧检测条件下的历史</summary>
+          <div id="website-previous-rows"></div>
+        </details>
+      </section>
+      <section id="servers" class="panel work-items" aria-labelledby="host-title">
+        <header class="panel-title">
+          <div><h2 id="host-title" tabindex="-1">服务器监控</h2><p id="host-status" role="status"></p></div>
+          <div class="host-heading-mark"><span id="host-type" class="pill" hidden></span><span class="panel-symbol" data-icon="server"></span></div>
+        </header>
+        <details id="host-registration" class="monitor-registration">
+          <summary id="host-registration-label">添加服务器监控</summary>
+          <form id="host-registration-form" method="post" aria-labelledby="host-registration-label" hidden>
+            <label for="host-registration-source">已登记的只读采集入口
+              <select id="host-registration-source" name="source" aria-describedby="host-registration-identity" required></select>
+            </label>
+            <p id="host-registration-identity"></p>
+            <button class="primary" type="submit">保存服务器监控</button>
+          </form>
+        </details>
+        <p id="host-registration-status" class="website-certificate" role="status"></p>
+        <div class="host-toolbar">
+          <div id="host-controls" class="website-controls" hidden>
+            <label class="scenario">已登记服务器 <select id="host-target"></select></label>
+            <label id="host-scenario-control" class="scenario" hidden>演示结果
+              <select id="host-scenario">
+                <option value="high">磁盘偏满</option>
+                <option value="missing">部分指标漏采</option>
+                <option value="healthy">复查恢复</option>
+              </select>
+            </label>
+            <button class="primary" id="host-run" type="button"><span data-icon="refresh"></span>立即采集</button>
+          </div>
+          <form id="host-schedule-form" class="website-controls" hidden>
+            <label for="host-interval" class="scenario">采集间隔（分钟）
+              <input id="host-interval" class="monitor-interval" type="number" min="1" max="1440" step="1" required>
+            </label>
+            <button class="primary" id="host-schedule-save" type="submit">启用定时</button>
+            <button id="host-pause" class="monitor-secondary" type="button">暂停</button>
+          </form>
+        </div>
+        <div id="host-schedule" hidden>
+          <dl id="host-timing" class="host-timing"></dl>
+        </div>
+        <div id="host-results">
+          <p id="host-empty" class="empty">正在读取服务器监控</p>
+          <div id="host-metrics" class="host-metrics" aria-label="监控指标" hidden></div>
+          <section id="host-trend-frame" class="host-trend-card" aria-labelledby="host-trend-title" hidden>
+            <header class="host-trend-top">
+              <div>
+                <h3 id="host-trend-title">CPU 使用率</h3>
+                <p id="host-trend-summary"></p>
+                <p id="host-disk-projection" role="status" hidden></p>
+              </div>
+              <div class="host-trend-controls">
+                <label class="scenario"><span class="sr-only">趋势时间范围</span>
+                  <select id="host-window">
+                    <option value="1">近 1 小时</option>
+                    <option value="6" selected>近 6 小时</option>
+                    <option value="24">近 24 小时</option>
+                  </select>
+                </label>
+                <label id="host-axis-control" class="scenario"><span class="sr-only">纵轴刻度</span>
+                  <select id="host-axis">
+                    <option value="full">0–100%</option>
+                    <option value="local">放大波动</option>
+                  </select>
+                </label>
+                <button id="host-zoom-reset" class="monitor-secondary" type="button" hidden>重置缩放</button>
+              </div>
+            </header>
+            <div id="host-chart" class="host-chart"></div>
+            <p id="host-chart-status" class="host-chart-status" role="status">正在读取趋势</p>
+          </section>
+          <details id="host-history" class="host-history" hidden>
+            <summary>查看采集明细</summary>
+            <div id="host-history-scroll" class="host-history-scroll"></div>
+          </details>
+        </div>
+      </section>
+      <section id="assets" class="panel work-items" aria-labelledby="assets-title" aria-busy="true">
+        <header class="panel-title"><div><h2 id="assets-title">资产分类</h2><p id="asset-summary" role="status">正在读取资产</p></div><span class="panel-symbol" data-icon="server"></span></header>
+        <p id="asset-route-status" class="empty" role="status"></p>
+        <search class="operation-record-filters asset-search" aria-label="查找资产">
+          <div class="asset-search-field">
+            <label for="asset-search">搜索资产</label>
+            <input id="asset-search" type="search" placeholder="名称、标识、厂商或地区" autocomplete="off" spellcheck="false" disabled>
+          </div>
+          <div class="asset-search-field">
+            <label for="asset-account">所属账号</label>
+            <select id="asset-account" disabled><option value="">全部账号</option></select>
+          </div>
+          <button id="asset-clear-filters" class="monitor-secondary" type="button" disabled>清除筛选</button>
+        </search>
+        <div id="asset-filters" class="filters" role="group" aria-label="按资产分类筛选"></div>
+        <div id="server-filters" class="filters" role="group" aria-label="按服务器类型筛选" hidden></div>
+        <div class="table-label" aria-hidden="true"><span>资产与所属账号</span><span>类型</span><span></span></div>
+        <div id="asset-rows"></div>
+      </section>
+      <section id="operation-records" class="panel work-items" aria-labelledby="operation-records-title">
+        <header class="panel-title">
+          <div><h2 id="operation-records-title" tabindex="-1">操作记录</h2><p>预览与回执</p></div>
+          <span class="panel-symbol" data-icon="clipboard"></span>
+        </header>
+        <form id="operation-record-filters" class="operation-record-filters">
+          <label for="operation-filter-resource">资源
+            <select id="operation-filter-resource" name="resource"><option value="">全部资源</option></select>
+          </label>
+          <label for="operation-filter-action">操作类型
+            <select id="operation-filter-action" name="action">
+              <option value="">全部类型</option><option value="reboot">QVM 重启</option><option value="dns">新增 A 记录</option>
+            </select>
+          </label>
+          <label for="operation-filter-status">状态
+            <select id="operation-filter-status" name="status">
+              <option value="">全部状态</option><option value="preview">仅预览</option><option value="accepted">已受理</option>
+              <option value="success">已验证</option><option value="needs-reconciliation">待核对</option>
+            </select>
+          </label>
+        </form>
+        <p id="operation-ledger-status" class="operation-ledger-status" role="status">从侧栏打开可读取记录</p>
+        <ul id="operation-ledger-rows"></ul>
+      </section>
+      <section id="settings" class="panel work-items" aria-labelledby="service-onboarding-title" tabindex="-1">
+        <header class="panel-title">
+          <div><h2 id="service-onboarding-title">服务接入</h2><p>在设置里登记只读连接</p></div>
+          <span class="panel-symbol" data-icon="lock"></span>
+        </header>
+        <div class="onboarding-content">
+          <p id="onboarding-state" role="status">正在读取接入设置</p>
+          <a id="onboarding-workbench" class="inspection-next" href="#main" hidden>返回工作台开始巡检<span data-icon="chevron"></span></a>
+          <form id="onboarding-form" method="post" action="/api/onboarding/test" hidden>
+            <div class="onboarding-provider-field">
+              <label for="onboarding-provider">服务商</label>
+              <select id="onboarding-provider" name="provider" aria-describedby="onboarding-scope"></select>
+            </div>
+            <p id="onboarding-scope"></p>
+            <div class="onboarding-provider-field">
+              <label for="onboarding-label">连接名称</label>
+              <input id="onboarding-label" name="label" maxlength="48" required aria-describedby="onboarding-label-help">
+              <p id="onboarding-label-help">用来在巡检中区分账号或域名，例如「个人域名」或「项目官网」。</p>
+            </div>
+            <fieldset id="onboarding-cloudflare" class="onboarding-fields">
+              <legend class="sr-only">Cloudflare 连接</legend>
+              <label>Account ID<input name="account_id" maxlength="32" pattern="[0-9a-fA-F]{32}" required></label>
+              <label>Zone ID<input name="zone_id" maxlength="32" pattern="[0-9a-fA-F]{32}" required></label>
+              <label>域名<input name="domain" maxlength="253" autocapitalize="none" spellcheck="false" required></label>
+              <label>API Token<input name="token" type="password" autocomplete="off" maxlength="512" required></label>
+            </fieldset>
+            <fieldset id="onboarding-spaceship" class="onboarding-fields" hidden disabled>
+              <legend class="sr-only">Spaceship 连接</legend>
+              <label>API Key<input name="key" type="password" autocomplete="off" maxlength="512" required></label>
+              <label>API Secret<input name="secret" type="password" autocomplete="off" maxlength="512" required></label>
+            </fieldset>
+            <div class="operation-buttons">
+              <button id="onboarding-test" class="monitor-secondary" type="submit">测试只读连接</button>
+              <button id="onboarding-save" class="primary" type="button" disabled>保存并接入</button>
+            </div>
+          </form>
+          <dl id="onboarding-results" class="onboarding-results" hidden></dl>
+          <div id="onboarding-connections" hidden>
+            <h3>已接入</h3>
+            <p id="onboarding-state-help" hidden>停用后暂停本地巡检和只读核对，已保存的凭据与历史待办仍可使用。厂商授权由服务商管理。</p>
+            <ul id="onboarding-connection-list"></ul>
+          </div>
+        </div>
+      </section>
+      <section id="storage" class="panel work-items" aria-labelledby="storage-title">
+        <header class="panel-title">
+          <div><h2 id="storage-title">数据与存储</h2><p>数据库、采集历史与本地备份</p></div>
+          <span class="panel-symbol" data-icon="database"></span>
+        </header>
+        <div class="storage-content">
+          <p id="storage-load-status" role="status">正在读取存储状态</p>
+          <div id="storage-details" hidden>
+            <dl class="storage-facts">
+              <div class="storage-location"><dt>状态目录</dt><dd><code id="storage-path"></code></dd></div>
+              <div><dt>真实数据</dt><dd id="storage-live-bytes"></dd></div>
+              <div><dt>模拟数据</dt><dd id="storage-demo-bytes"></dd></div>
+              <div><dt>SQLite 文件加密</dt><dd><span id="storage-encryption"></span>
+                <small>系统加密卷状态由宿主机管理。</small></dd></div>
+            </dl>
+            <div class="storage-actions">
+              <form id="retention-form" aria-labelledby="retention-title">
+                <h3 id="retention-title">采集历史保留期</h3>
+                <p>当前保留期 <strong id="retention-current"></strong></p>
+                <label for="retention-days">保留天数</label>
+                <input id="retention-days" type="number" min="1" max="3650" step="1"
+                  inputmode="numeric" aria-describedby="retention-help">
+                <p id="retention-help">留空表示不限期。到期会清理真实网站和服务器的原始样本，待办、处理历史及定时统计继续保留。</p>
+                <div class="storage-form-foot">
+                  <button id="retention-save" class="monitor-secondary" type="submit">保存保留期</button>
+                  <p id="retention-status" role="status"></p>
+                </div>
+              </form>
+              <form id="backup-form" aria-labelledby="backup-title">
+                <h3 id="backup-title">加密备份</h3>
+                <p>包含真实状态库和监控目标配置。服务目录、服务商凭据与模拟数据单独管理。</p>
+                <dl class="storage-facts">
+                  <div><dt>最近生成备份</dt><dd id="backup-generated">无记录</dd></div>
+                  <div><dt>最近恢复演练通过</dt><dd id="backup-verified">无记录</dd></div>
+                </dl>
+                <p>恢复演练在终端执行 <code>stackorion-backup verify-dashboard --help</code>。成功后刷新查看。</p>
+                <p id="backup-unavailable" hidden>加密备份需要安装 <a href="https://github.com/FiloSottile/age#installation" target="_blank" rel="noreferrer">age</a>，并使用支持 SQLite 内存快照的 Python。</p>
+                <label for="backup-key">age 接收方公钥</label>
+                <input id="backup-key" type="text" required pattern="age1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}"
+                  autocomplete="off" autocapitalize="none" spellcheck="false" aria-describedby="backup-help">
+                <p id="backup-help">粘贴 age-keygen 生成的 age1… 公钥。对应私钥用于解密恢复，请另行保管。</p>
+                <div class="storage-form-foot">
+                  <button id="backup-download" class="primary" type="submit"><span data-icon="download"></span>下载加密备份</button>
+                  <p id="backup-status" role="status"></p>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <dialog id="details" aria-labelledby="detail-title">
+    <header class="dialog-head">
+      <div><span id="detail-kind" class="detail-kind"></span><h2 id="detail-title" tabindex="-1"></h2><p id="detail-account"></p></div>
+      <form method="dialog"><button class="close" type="submit" aria-label="关闭详情" autofocus><span data-icon="close"></span></button></form>
+    </header>
+    <dl id="detail-fields" class="detail-fields"></dl>
+    <p id="work-next-step" class="detail-note" hidden></p>
+    <div id="detail-links" class="detail-links" hidden></div>
+    <section id="domain-delivery" class="detail-operation" aria-labelledby="domain-delivery-heading" hidden>
+      <h3 id="domain-delivery-heading">公网解析与 HTTPS</h3>
+      <p>用本机解析器查询 NS，抽查一台权威 DNS，再请求域名根路径。</p>
+      <div><button id="domain-delivery-check" type="button" class="monitor-secondary">检查公网解析</button></div>
+      <p id="domain-delivery-status" role="status"></p>
+      <dl id="domain-delivery-results" class="detail-fields" hidden></dl>
+    </section>
+    <details id="asset-related-work" class="detail-history" hidden>
+      <summary>关联待办 <span id="asset-related-count"></span></summary>
+      <ul id="asset-related-rows" class="asset-related-rows"></ul>
+      <p id="asset-related-empty" class="empty" hidden>暂无与此资产匹配的待办。</p>
+    </details>
+    <section id="resource-operation" class="detail-operation" hidden>
+      <h3 id="resource-operation-heading"></h3>
+      <p id="resource-operation-mode"></p>
+      <p id="resource-operation-binding"></p>
+      <form id="resource-preview-form">
+        <div id="resource-dns-fields" hidden>
+          <label>记录名<input name="name" maxlength="253" placeholder="www.example.com"></label>
+          <label>IPv4 地址<input name="content" maxlength="15" placeholder="192.0.2.10"></label>
+          <label>TTL（秒）<input name="ttl" type="number" value="300" min="60" max="86400"></label>
+        </div>
+        <button type="submit" class="monitor-secondary" id="resource-preview-button">生成预览</button>
+      </form>
+      <p id="resource-operation-status" role="status"></p>
+      <details id="resource-operation-history">
+        <summary>操作记录</summary>
+        <p id="operation-history-status" role="status"></p>
+        <ul id="operation-history-rows"></ul>
+      </details>
+    </section>
+    <p id="detail-note" class="detail-note" hidden></p>
+    <section id="work-recheck" class="detail-operation" aria-labelledby="work-recheck-title" hidden>
+      <h3 id="work-recheck-title">网站复查</h3>
+      <div id="work-recheck-controls" class="operation-buttons">
+        <label id="work-recheck-demo" class="scenario" hidden>演示结果
+          <select id="work-recheck-scenario"></select>
+        </label>
+        <button id="work-recheck-run" class="monitor-secondary" type="button">立即复查</button>
+      </div>
+      <p id="work-recheck-status" role="status" tabindex="-1"></p>
+    </section>
+    <details id="work-exception" class="monitor-registration" hidden>
+      <summary>已知例外</summary>
+      <form id="work-exception-form">
+        <label>例外原因<input name="reason" required maxlength="240"></label>
+        <label>复查日期（UTC+8）<input name="review_on" type="date" required aria-describedby="exception-help"></label>
+        <p id="exception-help">巡检继续记录证据。复查日当天，未解决的事项恢复待处理。</p>
+        <div class="operation-buttons">
+          <button type="submit" class="monitor-secondary">保存例外</button>
+          <button type="button" id="work-exception-remove" class="monitor-secondary" hidden>取消例外</button>
+        </div>
+        <p id="work-exception-status" role="status"></p>
+      </form>
+    </details>
+    <details id="detail-history" class="detail-history" hidden>
+      <summary>巡检历史 <span id="history-count"></span></summary>
+      <ol id="history-events"></ol>
+    </details>
+    <footer class="dialog-foot"><span class="demo-tag"><i></i><span id="detail-source"></span></span><time id="detail-time"></time></footer>
+  </dialog>
+  <dialog id="operation-confirm" aria-labelledby="operation-confirm-title">
+    <header class="dialog-head"><h2 id="operation-confirm-title">操作预览</h2></header>
+    <dl id="operation-plan" class="detail-fields"></dl>
+    <div class="detail-operation">
+      <p id="operation-summary" role="status"></p>
+      <div class="operation-buttons">
+        <form method="dialog"><button type="submit" class="monitor-secondary" autofocus>关闭</button></form>
+        <button type="button" id="operation-execute" class="primary" hidden>确认并执行模拟</button>
+        <a id="operation-resource-link" class="monitor-secondary" hidden>返回资源详情</a>
+        <a id="operation-work-link" class="monitor-secondary" hidden>查看关联待办</a>
+        <button type="button" id="operation-verify" class="monitor-secondary" hidden>核对回执和结果</button>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>
