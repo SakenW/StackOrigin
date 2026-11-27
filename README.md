@@ -8,11 +8,19 @@ StackOrigin 是本地运维工作台。用 Web 面板巡检账单和资产、跟
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python -m pip install .
+bash tools/pip-cache.sh .venv/bin/python install .
 .venv/bin/stackorion-dashboard --development --port 8766 --state-dir "$PWD/.stackorion/demo"
 ```
 
 在浏览器访问 [本地工作台](http://127.0.0.1:8766/)，确认勾选「显示模拟数据」，点击「开始巡检」。要使用真实的只读连接，按[安装指南](src/stackorion/INSTALL.md)另选状态目录并启动，再在「设置 → 服务接入」登记账号。
+
+在本机 macOS 上，安装入口将 pip 下载缓存放在工作盘的 `/Volumes/工作盘/.缓存/依赖/darwin-<架构>/pip`。虚拟环境留在各工作树。可在联网时用相同平台和 Python 版本预备离线安装所需的 wheels。
+
+```sh
+# wheelhouse 指向工作盘上专用于这次安装的目录
+bash tools/pip-cache.sh .venv/bin/python wheel --wheel-dir "$wheelhouse" .
+bash tools/pip-cache.sh .venv/bin/python install --no-index --find-links "$wheelhouse" "$wheelhouse"/stackorion-*.whl
+```
 
 ## 网站监控
 
@@ -44,7 +52,7 @@ DeepSeek Harness 交接插件源文件位于 [integrations/deepseek-harness](int
 完整运行随源码附带的离线测试前，安装腾讯云可选 SDK。加密备份用例使用系统已安装的 `age`。
 
 ```sh
-.venv/bin/python -m pip install '.[tencent]'
+bash tools/pip-cache.sh .venv/bin/python install '.[tencent]'
 .venv/bin/python -m unittest discover -s tests
 ```
 
