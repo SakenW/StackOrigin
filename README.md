@@ -12,6 +12,8 @@ bash tools/pip-cache.sh .venv/bin/python install .
 .venv/bin/stackorion-dashboard --development --port 8766 --state-dir "$PWD/.stackorion/demo"
 ```
 
+`--state-dir "$PWD/.stackorion/demo"` 将试用面板的状态和巡检历史保存在当前工作树的 `.stackorion/demo`，与真实接入使用的状态目录分开。离线试用时，启动前保持 `STACKORION_CONFIG` 未设置。
+
 在浏览器访问 [本地工作台](http://127.0.0.1:8766/)，确认勾选「显示模拟数据」，点击「开始巡检」。要使用真实的只读连接，按[安装指南](src/stackorion/INSTALL.md)另选状态目录并启动，再在「设置 → 服务接入」登记账号。
 
 在本机 macOS 上，安装入口将 pip 下载缓存放在工作盘的 `/Volumes/工作盘/.缓存/依赖/darwin-<架构>/pip`。虚拟环境留在各工作树。可在联网时用相同平台和 Python 版本预备离线安装所需的 wheels。
