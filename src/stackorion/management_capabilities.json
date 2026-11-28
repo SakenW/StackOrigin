@@ -374,27 +374,27 @@
     },
     {
       "id": "qvm.inventory",
-      "owner": "server-management",
-      "source": "qiniu_qvm_tool.py",
-      "source_scope": "stackorion-worktree",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_qvm_api.py",
+      "source_scope": "stackorion",
       "mutates": false,
       "mcp_status": "query-connected",
       "mcp_tools": [
         "discover_service:qiniu-default"
       ],
-      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+      "execution_note": "安装包默认通过七牛官方 API 查询；显式配置 script_path 时沿用脚本。"
     },
     {
       "id": "qvm.instance-audit",
-      "owner": "server-management",
-      "source": "qiniu_qvm_tool.py",
-      "source_scope": "stackorion-worktree",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_qvm_api.py",
+      "source_scope": "stackorion",
       "mutates": false,
       "mcp_status": "query-connected",
       "mcp_tools": [
         "inspect_target:qiniu-default"
       ],
-      "execution_note": "目录已登记不代表执行器已接通；创建和生产采用须按对应入口验收"
+      "execution_note": "按已登记的实例 ID 查询详情；显式配置 script_path 时沿用脚本。"
     },
     {
       "id": "qvm.allow-port",

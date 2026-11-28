@@ -1,4 +1,4 @@
-"""Read-only QVM discovery and exact-instance audit through the owned helper."""
+"""Read-only QVM discovery and exact-instance audit."""
 
 from __future__ import annotations
 
@@ -78,12 +78,15 @@ def run_qiniu_helper(script: Path, credential: Path, args: list[str]) -> dict[st
 
 class QiniuQVMAdapter:
     def __init__(self, settings: dict[str, Any]):
-        if set(settings) != {"script_path", "credential_file", "targets"}:
+        required = {"credential_file", "targets"}
+        if set(settings) - {"script_path"} != required:
             raise CatalogError("invalid QVM adapter settings")
-        if not isinstance(settings["script_path"], str) or not isinstance(settings["credential_file"], str):
+        if (not isinstance(settings["credential_file"], str)
+                or ("script_path" in settings and not isinstance(settings["script_path"], str))):
             raise CatalogError("invalid QVM paths")
-        self.script, self.credential = Path(settings["script_path"]), Path(settings["credential_file"])
-        if not self.script.is_absolute() or not self.credential.is_absolute():
+        self.script = Path(settings["script_path"]) if "script_path" in settings else None
+        self.credential = Path(settings["credential_file"])
+        if not self.credential.is_absolute() or (self.script is not None and not self.script.is_absolute()):
             raise CatalogError("QVM paths must be absolute")
         if not isinstance(settings["targets"], list):
             raise CatalogError("QVM targets must be a list")
@@ -101,11 +104,21 @@ class QiniuQVMAdapter:
     def list_targets(self) -> list[str]:
         return sorted(self.targets)
 
+    @property
+    def query_upstreams(self):
+        return {"inventory": "official-api", "instance": "official-api"} if self.script is None else {}
+
     def _run(self, args: list[str]) -> dict[str, Any]:
+        if self.script is None:
+            raise CatalogError("QVM helper requires an explicit script_path")
         return run_qiniu_helper(self.script, self.credential, args)
 
     def discover(self) -> dict[str, Any]:
-        payload = self._run(["inventory"])
+        if self.script is None:
+            from .qiniu_qvm_api import QVMReadAPI
+            payload = QVMReadAPI(self.credential).inventory()
+        else:
+            payload = self._run(["inventory"])
         collections = payload.get("collections")
         if not isinstance(collections, dict) or set(collections) != {"instances", "eips", "vpcs"}:
             raise CatalogError("QVM inventory returned unexpected collections")
@@ -117,9 +130,13 @@ class QiniuQVMAdapter:
                 "data": clean}
 
     def inspect(self, alias: str) -> dict[str, Any]:
-        if alias not in self.targets:
+        if not isinstance(alias, str) or alias not in self.targets:
             raise CatalogError("unknown QVM target")
-        payload = self._run(["--instance-id", self.targets[alias], "audit"])
+        if self.script is None:
+            from .qiniu_qvm_api import QVMReadAPI
+            payload = QVMReadAPI(self.credential).instance(self.targets[alias])
+        else:
+            payload = self._run(["--instance-id", self.targets[alias], "audit"])
         instance = payload.get("instance")
         if not isinstance(instance, dict) or instance.get("instance_id") != self.targets[alias]:
             raise CatalogError("QVM audit target mismatch")

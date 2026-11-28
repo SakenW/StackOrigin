@@ -69,7 +69,6 @@
       "adapter": "qiniu-qvm",
       "enabled": false,
       "settings": {
-        "script_path": "/absolute/path/to/服务器管理/qiniu_qvm_tool.py",
         "credential_file": "/absolute/path/to/qiniu-readonly.env",
         "targets": []
       }

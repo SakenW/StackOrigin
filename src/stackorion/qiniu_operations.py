@@ -54,6 +54,8 @@ def _adapter(catalog, service_id):
     adapter = catalog.adapter(service)
     if not isinstance(adapter, QiniuQVMAdapter):
         raise CatalogError("unexpected QVM operation adapter")
+    if adapter.script is None:
+        raise CatalogError("QVM operations require an explicit script_path")
     return service, adapter
 
 

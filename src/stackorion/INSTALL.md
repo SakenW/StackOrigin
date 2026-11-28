@@ -27,3 +27,11 @@ python3 -m venv ./stackorion-env
 - 源码包带有 `config/services.example.json`，供 CLI 或 MCP 使用。复制到私有目录，替换所需凭据与目标，再将该文件的绝对路径设为 `STACKORION_CONFIG`。希望通过面板登记连接时，启动环境无需设置这个变量。
 - 使用 MCP 时，把客户端的启动命令指向虚拟环境内的 `stackorion-mcp`。只需要面板交接时，用 `stackorion-dashboard-mcp` 并将 `STACKORION_DASHBOARD_URL` 指向已启动的本机面板，例如 `http://127.0.0.1:8765`。
 - 升级时在原虚拟环境安装新的包，沿用服务 ID、配置和 `--state-dir`。从虚拟环境卸载包不会删除单独保存的历史或凭据。
+
+### 七牛 QVM 只读查询
+
+在服务目录登记 `qiniu-qvm` 服务。将私有文件的绝对路径填入 `settings.credential_file`，凭据文件写入只读账号的 `QINIU_AK` 和 `QINIU_SK`，每行一项。文件和其所在目录分别使用 `0600`、`0700` 权限。`settings.targets` 填写 `{"alias":"我的主机","instance_id":"i-…"}` 形式的条目。仅做发现时可以填空数组。
+
+省略 `script_path` 即可从安装包查询。CLI 使用 `stackorion discover <服务ID>` 和 `stackorion inspect <服务ID> <别名>`。MCP 使用 `discover_service`、`inspect_target`，或通过 `query_service` 调用 `inventory`、`instance`。Web 巡检通过相同配置读取实例和已登记目标的安全组。发现查询每类最多返回 1000 条，分页截断或关联资源读取失败时查看结果中的覆盖状态。
+
+已有 `script_path` 配置继续走原脚本。使用安全组变更计划与执行入口或旧 QVM 指标采集时，保留其显式脚本配置。

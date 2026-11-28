@@ -47,6 +47,8 @@ def host_binding(catalog, capacity_service, qvm_service, alias):
 
 
 def qvm_metrics(adapter, monitor, now):
+    if adapter.script is None:
+        raise CatalogError("QVM monitoring requires an explicit script_path")
     _regular_owned(adapter.script, secret=False)
     _regular_owned(adapter.credential, secret=True)
     spec = importlib.util.spec_from_file_location("stackorion_qvm_monitor_transport", adapter.script)
