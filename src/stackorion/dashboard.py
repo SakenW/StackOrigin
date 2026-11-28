@@ -54,6 +54,7 @@ OPS_ASSETS = {
 ASSETS = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/dashboard.css": ("dashboard.css", "text/css; charset=utf-8"),
+    "/qiniu-account.js": ("qiniu-account.js", "text/javascript; charset=utf-8"),
     "/dashboard.js": ("dashboard.js", "text/javascript; charset=utf-8"),
     "/resource-operation.js": ("resource-operation.js", "text/javascript; charset=utf-8"),
     "/onboarding.js": ("onboarding.js", "text/javascript; charset=utf-8"),
@@ -161,7 +162,7 @@ class DashboardData:
         self.development = development
         self._configured_websites = load_monitors(monitor_config) if monitor_config is not None else None
         self.schedules = MonitorSchedules(self.live, self.live._record_monitor)
-        self.hosts = load_hosts(host_monitor_config, load_connections(config)) if host_monitor_config else {}
+        self.hosts = load_hosts(host_monitor_config, self.connections()) if host_monitor_config else {}
         self.host_schedules = MonitorSchedules(self.live, self.live._record_host, lease_seconds=120)
         self.inspection_schedules = MonitorSchedules(self.live, self._record_inspection_slot, lease_seconds=900)
         self.demo_host_schedules = MonitorSchedules(self.demo, self.demo._record_host, synthetic=True) if self.demo else None
@@ -1173,7 +1174,7 @@ def ops_endpoints(state_dir, host_config, website_config, *, hosts_only=False, w
     if host_config is not None:
         from .ops_live_hosts import OpsLiveHosts
 
-        hosts = OpsLiveHosts(load_connections(host_config))
+        hosts = OpsLiveHosts(load_connections(host_config), workbench.hosts.values() if workbench else ())
         endpoints["/api/ops-live-hosts"] = hosts.snapshot
     if hosts_only:
         endpoints["/api/ops-preview"] = endpoints["/api/ops-live-hosts"]
@@ -1207,6 +1208,7 @@ def main():
                         default=os.environ.get("STACKORION_DEVELOPMENT") == "1")
     parser.add_argument("--monitor-config", type=Path, default=os.environ.get("STACKORION_MONITOR_CONFIG"))
     parser.add_argument("--host-monitor-config", type=Path, default=os.environ.get("STACKORION_HOST_MONITOR_CONFIG"))
+    parser.add_argument("--qiniu-account-config", type=Path, help="Local JSON with credential_file and las_regions")
     parser.add_argument("--operation-preview-config", type=Path)
     parser.add_argument("--ops-preview", action="store_true", help="Show the synthetic operations dashboard")
     parser.add_argument("--ops-live-hosts", action="store_true", help="Show read-only QVM metrics from --config")
@@ -1240,6 +1242,10 @@ def main():
     data = DashboardData(args.state_dir, args.config, args.development, args.monitor_config, args.host_monitor_config)
     try:
         endpoints = ops_endpoints(args.state_dir, args.ops_host_config, args.ops_website_config, workbench=data)
+        if args.qiniu_account_config is not None:
+            from .qiniu_account_reads import QiniuAccountReads
+
+            endpoints["/api/qiniu-account"] = QiniuAccountReads.from_file(args.qiniu_account_config).snapshot
     except (CatalogError, ValueError, OSError) as exc:
         parser.error(str(exc))
     if args.operation_preview_config:

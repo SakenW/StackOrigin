@@ -238,6 +238,11 @@
         <div id="server-filters" class="filters" role="group" aria-label="按服务器类型筛选" hidden></div>
         <div class="table-label" aria-hidden="true"><span>资产与所属账号</span><span>类型</span><span></span></div>
         <div id="asset-rows"></div>
+        <details id="qiniu-account" class="host-history">
+          <summary>七牛云资源与账单 · 只读</summary>
+          <p id="qiniu-account-status" role="status"></p>
+          <div id="qiniu-account-rows"></div>
+        </details>
       </section>
       <section id="operation-records" class="panel work-items" aria-labelledby="operation-records-title">
         <header class="panel-title">
@@ -549,5 +554,6 @@
       </div>
     </div>
   </dialog>
+  <script type="module" src="/qiniu-account.js"></script>
 </body>
 </html>

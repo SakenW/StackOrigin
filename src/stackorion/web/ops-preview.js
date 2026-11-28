@@ -170,7 +170,8 @@ function renderLiveHosts(hosts) {
   };
   const number = new Intl.NumberFormat('zh-CN', {maximumFractionDigits: 2});
   const metrics = [
-    ['memory_percent', '内存', '%', '未接入'],
+    ['memory_percent', '内存', '%', '未取得'],
+    ['disk_percent', '根盘', '%', '未取得'],
     ['network_rx_kbit', '内网接收', ' kbit', '未取得'],
     ['network_tx_kbit', '内网发送', ' kbit', '未取得'],
   ];
@@ -210,6 +211,9 @@ function renderLiveHosts(hosts) {
     const footer = element('div', 'ops-live-meta');
     footer.append(element('span', 'ops-signal-meta', '真实 · 只读'));
     if (sample.observed_at) footer.append(monitorTime(sample.observed_at));
+    if (sample.guest_observed_at && sample.guest_observed_at !== sample.observed_at) {
+      footer.append(element('span', 'ops-signal-meta', '内存与根盘 · ' + timeLabel(sample.guest_observed_at)));
+    }
     card.append(trend, values, footer);
     if (details) card.append(details);
     if (sample.reason === 'permission_denied') card.append(element('p', 'ops-signal-meta', '云监控接口未授予读取权限'));
