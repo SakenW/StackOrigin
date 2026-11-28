@@ -40,15 +40,19 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
             "instance_id": "i-fixture", "instance_name": "fixture", "region_id": "cn-fixture",
             "instance_charge_type": "PostPaid", "security_group_ids": {"security_group_id": ["sg-fixture"]},
             "eip_address": {"ip_address": "192.0.2.1", "password": "unexpected-field"},
+            "vpc_attributes": {"vpc_id": "vpc-fixture"},
             "password": "unexpected-field",
         }
+        binding = {"instance_id": "i-fixture", "region_id": "cn-fixture"}
         self.routes = {
             "/v1/vm/instance": {"total": 1, "data": [self.vm]},
-            "/v1/vm/eip": {"total": 0, "data": []},
-            "/v1/vm/vpc": {"total": 0, "data": []},
+            "/v1/vm/eip": {"total": 1, "data": [{"allocation_id": "eip-fixture", **binding}]},
+            "/v1/vm/vpc": {"total": 1, "data": [{"vpc_id": "vpc-fixture", "region_id": "cn-fixture"}]},
             "/v1/vm/instance/i-fixture": {"data": self.vm},
-            "/v1/vm/disk": {"total": 1, "data": [{"disk_id": "d-fixture", "size": 50}]},
-            "/v1/vpc/common_bandwidth": {"total": 1, "data": [{"cb_id": "cb-fixture", "name": "fixture"}]},
+            "/v1/vm/disk": {"total": 1, "data": [{"disk_id": "d-fixture", "size": 50, **binding}]},
+            "/v1/vpc/common_bandwidth": {"total": 1, "data": [{
+                "cb_id": "cb-fixture", "region_id": "cn-fixture", "public_address": [{"eip_id": "eip-fixture"}],
+            }]},
             "/v1/vm/sgr/sg-fixture/ingress": {"total": 1, "data": [{
                 "security_group_rule_id": "rule-fixture", "ip_protocol": "TCP",
                 "policy": "Accept", "port_range": "22/22", "source_cidr_ip": "0.0.0.0/0",
@@ -72,6 +76,8 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
                              "Qiniu fixture-access-abc:NZobZQ6k-NblvXWw52nFEzj9hOg=")
         params = parse_qs(url.query)
         self.requests.append((url.path, params))
+        if url.path == "/v1/vm/instance/i-fixture" and params.get("region_id") != ["cn-fixture"]:
+            raise HTTPError(request.full_url, 400, "region_id is required", {}, io.BytesIO())
         value = self.routes[url.path]
         if callable(value):
             value = value(params)
@@ -118,29 +124,151 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
     def test_exact_detail_and_related_request_scope(self):
         disk_path = "/v1/vm/disk"
         self.routes[disk_path] = HTTPError("", 403, "denied", {}, io.BytesIO())
+        bandwidth = self.routes["/v1/vpc/common_bandwidth"]
+        bandwidth["data"].append({"cb_id": "cb-other", "region_id": "cn-fixture",
+                                  "public_address": [{"eip_id": "eip-other"}]})
+        bandwidth["total"] = 2
         result = self.adapter().inspect("main")
-        self.assertEqual(self.requests[0], ("/v1/vm/instance/i-fixture", {}))
-        related = dict(self.requests[1:])
+        self.assertEqual(self.requests[:2], [
+            ("/v1/vm/instance", {"instance_id": ["i-fixture"], "page": ["1"], "size": ["100"]}),
+            ("/v1/vm/instance/i-fixture", {"region_id": ["cn-fixture"]}),
+        ])
+        related = dict(self.requests[2:])
         for params in related.values():
             self.assertEqual(params["region_id"], ["cn-fixture"])
         for path in (disk_path, "/v1/vm/eip"):
             self.assertEqual(related[path]["instance_id"], ["i-fixture"])
+        self.assertEqual(related["/v1/vm/vpc"]["vpc_id"], ["vpc-fixture"])
         self.assertEqual(result["status"], "partial")
         self.assertEqual(result["coverage"]["disks"]["reason"], "http_403")
         self.assertEqual(result["coverage"]["egress:sg-fixture"]["status"], "observed")
         self.assertEqual(result["data"]["security_group_ingress"]["sg-fixture"][0]["protocol"], "TCP")
-        self.assertEqual(result["data"]["common_bandwidth"][0]["bandwidth_package_id"], "cb-fixture")
+        self.assertEqual([row["bandwidth_package_id"] for row in result["data"]["common_bandwidth"]], ["cb-fixture"])
+        self.assertEqual(result["coverage"]["common_bandwidth"]["status"], "observed")
         self.assertNotIn("unexpected-field", json.dumps(result))
         self.requests.clear()
-        self.routes["/v1/vm/instance/i-fixture"] = {"data": {"instance_id": "i-other"}}
-        with self.assertRaisesRegex(CatalogError, "target mismatch"):
-            self.adapter().inspect("main")
+        for substitution in ({"instance_id": "i-other"}, {"region_id": "cn-other"}):
+            self.routes["/v1/vm/instance/i-fixture"] = {"data": {**self.vm, **substitution}}
+            with self.assertRaisesRegex(CatalogError, "target mismatch"):
+                self.adapter().inspect("main")
         with self.assertRaisesRegex(CatalogError, "unknown QVM target"):
             self.adapter().inspect("i-other")
-        self.assertEqual(len(self.requests), 1)
+        self.assertEqual(len(self.requests), 4)
+
+    def test_instance_lookup_rejects_empty_ambiguous_and_unlocated_targets(self):
+        for rows, reason in (
+            ([], "one exact target"),
+            ([self.vm, {**self.vm, "instance_id": "i-unrelated"}], "one exact target"),
+            ([self.vm, {**self.vm, "region_id": "cn-other"}], "duplicate_resource"),
+            ([{"instance_id": "i-fixture"}], "invalid region"),
+        ):
+            with self.subTest(reason=reason):
+                self.requests.clear()
+                self.routes["/v1/vm/instance"] = {"total": len(rows), "data": rows}
+                with self.assertRaisesRegex(CatalogError, reason):
+                    self.adapter().inspect("main")
+                self.assertEqual([path for path, _ in self.requests], ["/v1/vm/instance"])
+
+    def test_associations_keep_only_verified_rows_and_preserve_failed_page(self):
+        eips = self.routes["/v1/vm/eip"]["data"]
+        eips.extend([
+            {"allocation_id": "foreign-eip", "region_id": "cn-fixture", "instance_id": "i-other"},
+            {"allocation_id": "unverified-eip", "region_id": "cn-fixture"},
+        ])
+        self.routes["/v1/vm/eip"]["total"] = len(eips)
+        vpcs = self.routes["/v1/vm/vpc"]["data"]
+        vpcs.extend([{"vpc_id": "vpc-other", "region_id": "cn-fixture"}, {"vpc_id": "unknown-region"}])
+        self.routes["/v1/vm/vpc"]["total"] = len(vpcs)
+        disk = self.routes["/v1/vm/disk"]["data"][0]
+
+        def disks(params):
+            if params["page"] == ["1"]:
+                return {"page": 1, "size": 1, "total": 2, "data": [disk]}
+            return HTTPError("", 503, "denied", {}, io.BytesIO())
+
+        self.routes["/v1/vm/disk"] = disks
+        bandwidth = self.routes["/v1/vpc/common_bandwidth"]["data"]
+        bandwidth.extend([
+            {"cb_id": "unrelated", "region_id": "cn-fixture", "public_address": [{"eip_id": "foreign-eip"}]},
+            {"cb_id": "membership-unknown", "region_id": "cn-fixture"},
+            {"cb_id": "different-region", "region_id": "cn-other", "public_address": [{"eip_id": "eip-fixture"}]},
+        ])
+        self.routes["/v1/vpc/common_bandwidth"]["total"] = len(bandwidth)
+        result = self.adapter().inspect("main")
+        for name, key, value in (("eip_by_instance", "allocation_id", "eip-fixture"),
+                                 ("vpcs", "vpc_id", "vpc-fixture"), ("disks", "disk_id", "d-fixture"),
+                                 ("common_bandwidth", "bandwidth_package_id", "cb-fixture")):
+            with self.subTest(collection=name):
+                self.assertEqual([row[key] for row in result["data"][name]], [value])
+                coverage = result["coverage"][name]
+                self.assertEqual((coverage["status"], coverage["returned_count"]), ("partial", 1))
+                self.assertEqual(coverage["reason"], "http_503" if name == "disks" else "association_unverified")
+
+    def test_unverified_association_is_distinct_from_an_explicit_empty_binding(self):
+        self.vm.pop("vpc_attributes")
+        self.routes["/v1/vm/eip"] = {"total": 1, "data": [{"allocation_id": "missing-binding"}]}
+        self.routes["/v1/vm/disk"] = {"total": 2, "data": [
+            {"disk_id": "d-other", "instance_id": "i-other", "region_id": "cn-fixture"},
+            {"disk_id": "d-unverified", "region_id": "cn-fixture"},
+        ]}
+        result = self.adapter().inspect("main")
+        for name in ("eip_by_instance", "disks", "vpcs", "common_bandwidth"):
+            self.assertEqual(result["data"][name], [])
+            self.assertEqual(result["coverage"][name]["status"], "unavailable")
+        self.assertFalse({"/v1/vm/vpc", "/v1/vpc/common_bandwidth"} & {path for path, _ in self.requests})
+        self.vm["vpc_attributes"] = {"vpc_id": ""}
+        self.routes["/v1/vm/eip"] = {"total": 0, "data": []}
+        result = self.adapter().inspect("main")
+        for name in ("eip_by_instance", "vpcs", "common_bandwidth"):
+            self.assertEqual(result["coverage"][name]["status"], "observed")
+
+    def test_web_preserves_denied_partial_and_successful_empty_group_coverage(self):
+        panel = DashboardData(self.root / "state", self.config, False)
+        ingress = "/v1/vm/sgr/sg-fixture/ingress"
+        success = self.routes[ingress]
+
+        def collect():
+            report = panel.run("daily", False)["report"]
+            [account] = report["accounts"]
+            return account, report["findings"]
+
+        self.routes[ingress] = HTTPError("", 403, "denied", {}, io.BytesIO())
+        account, _ = collect()
+        self.assertEqual(account["checks"]["安全组"], "unavailable")
+        [failed] = account["qvm_rule_coverage"]
+        self.assertEqual((failed["status"], failed["denied"]), ("unavailable", True))
+        self.assertNotIn("returned_count", failed)
+
+        self.routes[ingress] = {"total": 0, "data": []}
+        account, _ = collect()
+        self.assertEqual(account["checks"]["安全组"], "partial")
+        [empty] = account["qvm_rule_coverage"]
+        self.assertEqual((empty["status"], empty["returned_count"]), ("observed", 0))
+        self.assertEqual(account["complete_scopes"], ["qvm-test:实例:configured"])
+
+        def partial(params):
+            if params["page"] == ["1"]:
+                return {**success, "size": 1, "total": 2}
+            return HTTPError("", 403, "denied", {}, io.BytesIO())
+
+        self.routes[ingress] = partial
+        self.vm["security_group_ids"]["security_group_id"].append("sg-denied")
+        self.routes["/v1/vm/sgr/sg-denied/ingress"] = HTTPError("", 403, "denied", {}, io.BytesIO())
+        self.routes["/v1/vm/sgr/sg-denied/egress"] = {"total": 0, "data": []}
+        account, findings = collect()
+        incomplete, denied = account["qvm_rule_coverage"]
+        self.assertEqual((incomplete["status"], incomplete["returned_count"]), ("partial", 1))
+        self.assertEqual((denied["group"], denied["status"]), ("sg-denied", "unavailable"))
+        self.assertEqual(account["checks"]["安全组"], "partial")
+        self.assertTrue(any(row["kind"] == "ssh" and row["id"].startswith("sg-fixture:") for row in findings))
 
     def test_native_cannot_use_legacy_operations_and_explicit_helper_does_not_fallback(self):
         registry = OperationRegistry(self.catalog)
+        self.assertEqual(registry.describe("qvm-test"),
+                         {"service": "qvm-test", "status": "unsupported", "operations": []})
+        receipt = {"identity": {"service": "qvm-test"}, "status": "success"}
+        with patch("stackorion.qiniu_operations.operation_status", return_value=receipt):
+            self.assertEqual(registry.service_receipt("qvm-test", "existing-receipt"), receipt)
         confirmation = {"expected_state": "a" * 64, "confirm_instance_id": "i-fixture",
                         "operation_id": "fixture-change"}
         for operation, params in (
@@ -172,6 +300,8 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
             result = await client.call_tool("list_service_capabilities", {"service_id": "qvm-test"})
             self.assertEqual({row["id"]: row["upstream"] for row in result.structured_content["queries"]},
                              {"inventory": "official-api", "instance": "official-api"})
+            self.assertEqual(result.structured_content["operation_status"], "unsupported")
+            self.assertEqual(result.structured_content["operations"], [])
             for tool, parameters in (
                 ("discover_service", {}),
                 ("inspect_target", {"target_alias": "main"}),

@@ -113,45 +113,106 @@ class QVMReadAPI:
     def instance(self, instance_id):
         if not RESOURCE_ID.fullmatch(instance_id):
             raise CatalogError("invalid QVM instance ID")
+        located = self._collection(INSTANCE_PATH, "instance_id", instance_id=instance_id)
+        if located["status"] != "observed":
+            raise CatalogError(f"QVM instance lookup unavailable ({located['reason']})")
+        matches = located["data"]
+        if len(matches) != 1 or matches[0]["instance_id"] != instance_id:
+            raise CatalogError("QVM instance lookup did not return one exact target")
+        region = matches[0].get("region_id")
+        if not isinstance(region, str) or not RESOURCE_ID.fullmatch(region):
+            raise CatalogError("QVM instance lookup returned an invalid region")
         try:
-            instance = self._get(f"{INSTANCE_PATH}/{instance_id}").get("data")
+            instance = self._get(f"{INSTANCE_PATH}/{instance_id}", region_id=region).get("data")
         except CatalogError as exc:
             raise CatalogError(f"QVM instance detail unavailable ({exc})") from None
-        if not isinstance(instance, dict) or instance.get("instance_id") != instance_id:
+        if (not isinstance(instance, dict) or instance.get("instance_id") != instance_id
+                or instance.get("region_id") != region):
             raise CatalogError("QVM audit target mismatch")
 
         clean_instance = _instance_fields(instance)
         groups = clean_instance.get("security_groups")
-        coverage = {"instance": {"status": "observed"}}
-        related = {}
+        related = self._related_resources(instance_id, region, clean_instance.get("vpc_id"))
+        coverage = {"instance": {"status": "observed"}, **related}
         rules = {"security_group_ingress": {}, "security_group_egress": {}}
-        region = instance.get("region_id")
-        if not isinstance(region, str) or not RESOURCE_ID.fullmatch(region):
-            coverage["related_resources"] = {"status": "unavailable", "reason": "invalid_region"}
-        else:
-            related = {
-                "eip_by_instance": self._collection(EIP_PATH, "allocation_id", region_id=region, instance_id=instance_id),
-                "vpcs": self._collection(VPC_PATH, "vpc_id", region_id=region),
-                "disks": self._collection(DISK_PATH, "disk_id", region_id=region, instance_id=instance_id),
-                "common_bandwidth": self._collection(BANDWIDTH_PATH, "cb_id", region_id=region),
-            }
-            for row in related["common_bandwidth"]["data"]:
-                row["bandwidth_package_id"] = row["cb_id"]
-                row.setdefault("expired_time", row.get("expire_time"))
-            coverage.update(related)
-            if groups is None:
-                coverage["security_groups"] = {"status": "unavailable", "reason": "invalid_security_groups"}
-            for group in groups or ():
-                for direction in ("ingress", "egress"):
-                    result = self._collection(f"/v1/vm/sgr/{group}/{direction}", "security_group_rule_id",
-                                              region_id=region)
-                    rules["security_group_" + direction][group] = [
-                        {**row, "id": row["security_group_rule_id"], "protocol": row.get("ip_protocol")}
-                        for row in result["data"]
-                    ]
-                    coverage[f"{direction}:{group}"] = result
-
+        if not groups:
+            coverage["security_groups"] = ({"status": "unavailable", "reason": "invalid_security_groups"}
+                                           if groups is None else {"status": "observed"})
+        for group in groups or ():
+            for direction in ("ingress", "egress"):
+                result = self._collection(f"/v1/vm/sgr/{group}/{direction}", "security_group_rule_id",
+                                          region_id=region)
+                rules["security_group_" + direction][group] = [
+                    {**row, "id": row["security_group_rule_id"], "protocol": row.get("ip_protocol")}
+                    for row in result["data"]
+                ]
+                coverage[f"{direction}:{group}"] = result
         return {"instance": clean_instance, **rules, **related, "coverage": coverage}
+
+    def _related_resources(self, instance_id, region, vpc_id):
+        def instance_binding(row):
+            if row.get("region_id") == region and row.get("instance_id") == instance_id:
+                return True
+            return None
+
+        eips = _associated(self._collection(EIP_PATH, "allocation_id", region_id=region, instance_id=instance_id),
+                           instance_binding)
+        disks = _associated(self._collection(DISK_PATH, "disk_id", region_id=region, instance_id=instance_id),
+                            instance_binding)
+        if vpc_id == "":
+            vpcs = _empty_collection()
+        elif isinstance(vpc_id, str) and RESOURCE_ID.fullmatch(vpc_id):
+            vpcs = _associated(self._collection(VPC_PATH, "vpc_id", region_id=region, vpc_id=vpc_id),
+                               lambda row: True if row["vpc_id"] == vpc_id and row.get("region_id") == region else None)
+            if vpcs["status"] == "observed" and not vpcs["data"]:
+                vpcs.update(status="unavailable", total=None, reason="association_unverified")
+        else:
+            vpcs = _empty_collection("vpc_identity_unavailable")
+        return {"eip_by_instance": eips, "disks": disks, "vpcs": vpcs,
+                "common_bandwidth": self._bandwidth(region, eips)}
+
+    def _bandwidth(self, region, eips):
+        complete = eips["status"] == "observed"
+        ids = {row["allocation_id"] for row in eips["data"]}
+        if not ids:
+            return _empty_collection(None if complete else "eip_coverage_incomplete")
+
+        def membership(row):
+            members = row.get("public_address")
+            if (row.get("region_id") != region or not isinstance(members, list)
+                    or any(not isinstance(member, dict) or not isinstance(member.get("eip_id"), str)
+                           or not member["eip_id"] for member in members)):
+                return None
+            return any(member["eip_id"] in ids for member in members)
+
+        result = _associated(self._collection(BANDWIDTH_PATH, "cb_id", region_id=region), membership)
+        if not complete and result["status"] == "observed":
+            result.update(status="partial" if result["data"] else "unavailable",
+                          total=None, reason="eip_coverage_incomplete")
+        for row in result["data"]:
+            row["bandwidth_package_id"] = row["cb_id"]
+            row.setdefault("expired_time", row.get("expire_time"))
+        return result
+
+
+def _empty_collection(reason=None):
+    return ({"status": "observed", "total": 0, "returned_count": 0, "pages": 0, "data": []} if reason is None else
+            {"status": "unavailable", "reason": reason, "total": None, "returned_count": 0, "pages": 0, "data": []})
+
+
+def _associated(collection, matches):
+    verified = []
+    for row in collection["data"]:
+        match = matches(row)
+        if match is True:
+            verified.append(row)
+        elif match is None:
+            collection.setdefault("reason", "association_unverified")
+    if "reason" in collection:
+        collection["status"] = "partial" if verified else "unavailable"
+    collection.update(data=verified, returned_count=len(verified),
+                      total=len(verified) if collection["status"] == "observed" else None)
+    return collection
 
 
 def _security_groups(instance):
@@ -191,5 +252,6 @@ def _instance_fields(instance):
         private = vpc.get("private_ip_address")
         if isinstance(private, dict):
             row.setdefault("private_ip_address", private.get("ip_address"))
-            row.setdefault("vpc_id", vpc.get("vpc_id") or private.get("vpc_id"))
+        nested = private.get("vpc_id") if isinstance(private, dict) else None
+        row.setdefault("vpc_id", vpc.get("vpc_id", nested))
     return row

@@ -63,6 +63,9 @@ class OperationRegistry:
 
     def describe(self, service_id: str) -> dict[str, Any]:
         plugin = self._service_plugin(service_id, optional=True)
+        service = self.catalog.get(service_id)
+        if service.adapter == "qiniu-qvm" and "script_path" not in service.settings:
+            plugin = None
         result={"service": service_id, "status": "available" if plugin else "unsupported",
                 "operations": [d.public() for d in plugin.definitions] if plugin else []}
         if plugin is not None:

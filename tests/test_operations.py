@@ -8,11 +8,13 @@ from stackorion.operations import OperationDefinition, OperationRegistry
 from stackorion.qiniu_operations import QiniuQVMOperations
 from stackorion.server import build_server
 
+QVM_SCRIPT = {"script_path": "/fixture/qvm.py", "credential_file": "/fixture/qvm.env", "targets": []}
+
 
 class OperationRegistryTests(unittest.TestCase):
     def setUp(self):
         self.catalog = Catalog([
-            Service("qiniu-main", "python-adapter", "qiniu", True, {}, "qiniu-qvm"),
+            Service("qiniu-main", "python-adapter", "qiniu", True, QVM_SCRIPT, "qiniu-qvm"),
             Service("qiniu-off", "python-adapter", "qiniu", False, {}, "qiniu-qvm"),
             Service("cloudflare-main", "python-adapter", "cloudflare", True, {}, "cloudflare-zone"),
             Service("wrong-main", "python-adapter", "cloudflare", True, {}, "qiniu-qvm"),
@@ -99,7 +101,7 @@ class OperationToolTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual((await get_receipt("qiniu-main"))["status"], "unavailable")
 
     async def test_existing_tool_contract_and_readonly_discovery(self):
-        catalog = Catalog([Service("qiniu-main", "python-adapter", "qiniu", True, {}, "qiniu-qvm")])
+        catalog = Catalog([Service("qiniu-main", "python-adapter", "qiniu", True, QVM_SCRIPT, "qiniu-qvm")])
         ep = Mock()
         ep.name = "qiniu-qvm"
         ep.load.return_value = QiniuQVMOperations

@@ -448,6 +448,12 @@ function renderCoverage() {
     control.addEventListener('click', () => {
       showDetails('账号覆盖', account.label, account.provider, [
         ['账号标识', account.id], ['本轮范围', state.textContent], ...checkFields(account.checks),
+        ...(account.qvm_rule_coverage || []).map(({target, region, group, status, denied, returned_count}) => [
+          ['已登记目标入网规则', target, region, group].filter(Boolean).join(' · '),
+          status === 'observed' ? `已读取 ${returned_count} 条` :
+            status === 'partial' ? `部分读取（${returned_count} 条）` :
+              denied ? '访问被拒绝' : status === 'unavailable' ? '未取得' : '覆盖未知',
+        ]),
         ...(account.balance ? [['余额指标', account.balance.metric],
           ['当前余额', account.balance.amount + ' ' + account.balance.currency]] : []),
         ...(account.billing_checks || []).flatMap(billingAccountFields),

@@ -109,6 +109,8 @@ def collect(catalog, *, starter=False, account_ids=None):
         if evidence is not None:
             if check == "账期费用":
                 account.setdefault("billing_checks", []).append({**evidence, "scope": scope})
+            elif check == "安全组" and evidence.get("qvm_rule_coverage") is not None:
+                account.setdefault("qvm_rule_coverage", []).extend(evidence["qvm_rule_coverage"])
             else:
                 account["balance"] = evidence
         fields = dict(account=key, account_label=account["label"], provider=account["provider"], data_source="live")
@@ -299,22 +301,41 @@ def normalized_rule(group, rule_id, protocol, action, source, port_range, region
 
 
 def qiniu_rules(adapter):
-    assets, findings = {}, {}
+    assets, findings, observed = {}, {}, []
     for alias in adapter.list_targets():
-        data = adapter.inspect(alias)["data"]
+        try:
+            result = adapter.inspect(alias)
+        except CatalogError:
+            observed.append(dict(target=alias, status="unavailable"))
+            continue
+        data, coverage = result["data"], result["coverage"]
         instance = data["instance"]
+        region = instance.get("region_id")
+        if not data["security_group_ingress"]:
+            group_coverage = coverage.get("security_groups", {})
+            observed.append(dict(target=alias, region=region,
+                                 status=group_coverage.get("status", "unknown"),
+                                 **({"returned_count": 0} if group_coverage.get("status") == "observed" else {})))
         for group, rules in data["security_group_ingress"].items():
-            asset = assets.setdefault(group, dict(id=group, kind="security_group", name=group,
-                region=instance.get("region_id"), instances=[]))
+            group_coverage = coverage.get(f"ingress:{group}", {})
+            status = group_coverage.get("status", "unknown")
+            observed.append(dict(target=alias, region=region, group=group, status=status,
+                                 denied=group_coverage.get("reason") in {"http_401", "http_403"},
+                                 **({"returned_count": len(rules)} if status in {"observed", "partial"} else {})))
+            if status == "unavailable":
+                continue
+            asset = assets.setdefault((region, group), dict(id=group, kind="security_group", name=group,
+                region=region, instances=[]))
             asset["instances"].append(instance["instance_id"])
             for rule in rules:
                 for source in (rule.get("source_cidr_ip"), rule.get("ipv6_source_cidr_ip")):
                     finding = normalized_rule(group, rule.get("id"), str(rule.get("protocol", "")).lower(),
                         str(rule.get("policy", "")).lower(), source, rule.get("port_range"), asset["region"], asset["instances"])
                     if finding:
-                        findings[finding["id"]] = finding
+                        findings[(region, finding["id"])] = finding
     # Fixed target audits cover known instances, not every group in the account.
-    return "partial", list(assets.values()), list(findings.values()), None
+    status = "unavailable" if observed and all(row["status"] == "unavailable" for row in observed) else "partial"
+    return status, list(assets.values()), list(findings.values()), {"qvm_rule_coverage": observed}
 
 
 def cloud_rules(adapter, name, region):
