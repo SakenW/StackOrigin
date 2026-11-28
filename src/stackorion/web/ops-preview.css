@@ -124,6 +124,10 @@
   gap: 10px;
 }
 .ops-host-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ops-domain-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr));
+  align-items: start;
+}
 .ops-host-grid:has(.ops-live-card) { align-items: start; }
 .ops-monitoring--hosts-only { grid-template-columns: minmax(0, 1fr); }
 .ops-monitoring--hosts-only .ops-host-grid {
@@ -173,51 +177,36 @@
 .ops-signal-meta { color: var(--monitor-muted); font-size: .8125rem; font-weight: 400; }
 .ops-time-zone { white-space: nowrap; }
 .ops-probe-path {
-  --probe-gap: 10px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--probe-gap);
   list-style: none;
   margin: 0;
   padding: 0;
-}
-@container (min-width: 340px) {
-  .ops-probe-path { --probe-gap: 15px; }
+  background: var(--monitor-inset);
+  border: 1px solid var(--monitor-line);
+  border-radius: 8px;
 }
 @container (max-width: 220px) {
   .ops-monitor-head { display: grid; justify-items: start; }
 }
-.ops-probe-stage { position: relative; }
-.ops-probe-link {
-  position: absolute;
-  inset-inline-start: calc(-1 * var(--probe-gap));
-  inset-block-start: 50%;
-  inline-size: var(--probe-gap);
-  block-size: 2px;
-  background: var(--monitor-signal);
-  transform-origin: left;
-}
-.ops-probe-tile {
+.ops-probe-stage {
   display: grid;
-  align-content: center;
-  gap: 1px;
-  min-block-size: 48px;
-  padding: 5px clamp(7px, 1.2vw, 16px);
-  background: color-mix(in oklab, var(--monitor-signal) 12%, var(--monitor-inset));
+  align-content: start;
+  padding: 4px 8px;
   color: var(--monitor-muted);
-  border: 1px solid color-mix(in oklab, var(--monitor-signal) 33%, transparent);
-  border-radius: 10px;
-  font-size: .8125rem;
+  font-size: .75rem;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
-.ops-probe-tile strong {
+.ops-probe-stage + .ops-probe-stage { border-inline-start: 1px solid var(--monitor-line); }
+.ops-probe-stage strong {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 5px;
   color: var(--monitor-signal);
-  font-size: .9375rem;
+  font-size: .8125rem;
 }
-.ops-probe-tile strong::before {
+.ops-probe-stage strong::before {
   content: '';
   align-self: center;
   inline-size: 5px;
@@ -249,6 +238,11 @@
   border-radius: 12px;
   container-type: inline-size;
 }
+.ops-domain-grid .ops-monitor-card {
+  gap: 6px;
+  padding: 9px 12px;
+}
+.ops-domain-grid .ops-signal-meta { font-size: .75rem; }
 .ops-monitor-card[data-connection="unconnected"] {
   --monitor-muted: var(--muted);
   background: var(--muted-paper);

@@ -231,19 +231,22 @@ function renderWebsite(website) {
   const https = run.status === 'pass' ? ['正常', 'success'] :
     run.phases.http?.ok === false ? ['未响应', 'high'] :
     run.status === 'fail' ? ['异常', 'high'] : unknown;
-  const card = monitorCard(website.domain, true);
-  const stages = element('ol', 'ops-probe-path');
-  for (const [name, [status, tone]] of [
+  const checks = [
     ['DNS', dns[run.phases.dns?.ok] ?? unknown],
     ['证书', certificates[website.certificate.status] ?? unknown],
     ['HTTPS', https],
-  ]) {
+  ];
+  const tones = checks.map(([, [, tone]]) => tone);
+  const summary = tones.includes('high') ? ['探测异常', 'high']
+    : tones.includes('warn') ? ['需关注', 'warn']
+    : tones.includes('missing') ? unknown : ['探测正常', 'success'];
+  const card = monitorCard(website.domain, true, summary);
+  const stages = element('ul', 'ops-probe-path');
+  stages.setAttribute('role', 'list');
+  for (const [name, [status, tone]] of checks) {
     const stage = element('li', 'ops-probe-stage');
     stage.dataset.tone = tone;
-    if (stages.children.length) stage.append(element('span', 'ops-probe-link'));
-    const tile = element('div', 'ops-probe-tile');
-    tile.append(element('span', '', name), element('strong', '', status));
-    stage.append(tile);
+    stage.append(element('span', '', name), element('strong', '', status));
     stages.append(stage);
   }
   card.append(stages, monitorTime(run.observed_at));
@@ -298,13 +301,9 @@ function enableMonitoringMotion() {
   }
   for (const path of monitor.querySelectorAll('.ops-probe-path')) {
     [...path.children].forEach((stage, index) => {
-      const at = .12 + index * .34;
-      const link = stage.querySelector('.ops-probe-link');
-      if (link) sequence.push([link, {transform: ['scaleX(0)', 'scaleX(1)']},
-        {at: at - .19, duration: .22, ease: 'easeOut'}]);
-      sequence.push([stage.querySelector('.ops-probe-tile'),
-        {transform: ['translateY(7px)', 'translateY(0)'], opacity: [.55, 1]},
-        {at, duration: .38, ease: 'easeOut'}]);
+      sequence.push([stage,
+        {transform: ['translateY(3px)', 'translateY(0)'], opacity: [.65, 1]},
+        {at: .12 + index * .12, duration: .28, ease: 'easeOut'}]);
     });
   }
   if (!sequence.length) return;
