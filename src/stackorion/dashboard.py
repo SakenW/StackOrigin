@@ -1064,7 +1064,7 @@ def build_demo_mcp():
 
 
 class OpsPreviewHandler(DashboardHandler):
-    """Serve a fixed, synthetic snapshot without exposing workbench actions."""
+    """Serve operations snapshots without exposing workbench actions."""
 
     assets = {
         "/": ("ops-preview.html", "text/html; charset=utf-8"),
@@ -1080,7 +1080,7 @@ class OpsPreviewHandler(DashboardHandler):
             if not self.storage_request_allowed():
                 self.send_error(403)
                 return
-            self.send_json(self.data)
+            self.send_json(self.data())
         elif path in self.assets:
             filename, content_type = self.assets[path]
             self.send_body(ROOT.joinpath(filename).read_bytes(), content_type)
@@ -1089,6 +1089,33 @@ class OpsPreviewHandler(DashboardHandler):
 
     def do_POST(self):
         self.send_error(405)
+
+
+def demo_ops_payload(state_dir):
+    from tempfile import TemporaryDirectory
+
+    state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    with TemporaryDirectory(prefix="ops-preview-", dir=state_dir) as seed:
+        snapshot = WorkItems(seed).record(demo_inspection())
+    observed = datetime.fromisoformat(snapshot["report"]["observed_at"])
+    inventory = demo_assets()
+    hosts = [{"name": DEMO_HOST.name, "observation": simulate_host("healthy", now=observed)}]
+    for asset in inventory["assets"]:
+        if asset["kind"] == "server" and (asset["account"], asset["id"]) == ("qiniu-prod", "qvm-edge-01"):
+            hosts.append({"name": asset["name"], "asset": asset,
+                          "observation": simulate_host("missing", now=observed)})
+    websites = []
+    api_monitor = Monitor("demo-api", "https://api.example.com/health", 200, "stackorion-ok")
+    for monitor, scenario in ((DEMO_MONITOR, "timeout"), (api_monitor, "recovered")):
+        observation = simulate(monitor, scenario, now=observed)
+        websites.append({"domain": urlsplit(monitor.url).hostname, "observation": observation,
+                         "certificate": certificate_status(observation)})
+    return {
+        "inspection": inspection_summary(snapshot["report"]),
+        "items": snapshot["items"],
+        "inventory": inventory,
+        "monitoring": {"hosts": hosts, "websites": websites},
+    }
 
 
 def main():
@@ -1102,39 +1129,29 @@ def main():
     parser.add_argument("--monitor-config", type=Path, default=os.environ.get("STACKORION_MONITOR_CONFIG"))
     parser.add_argument("--host-monitor-config", type=Path, default=os.environ.get("STACKORION_HOST_MONITOR_CONFIG"))
     parser.add_argument("--operation-preview-config", type=Path)
-    parser.add_argument("--ops-preview", action="store_true", help="Serve the read-only synthetic operations dashboard")
+    ops_mode = parser.add_mutually_exclusive_group()
+    ops_mode.add_argument("--ops-preview", action="store_true", help="Serve the read-only synthetic operations dashboard")
+    ops_mode.add_argument("--ops-live-hosts", action="store_true", help="Serve read-only QVM metrics from --config")
     args = parser.parse_args()
     if args.mcp:
         build_demo_mcp().run()
         return
     from functools import partial
 
-    if args.ops_preview:
-        from tempfile import TemporaryDirectory
+    if args.ops_preview or args.ops_live_hosts:
+        if args.ops_live_hosts:
+            from .ops_live_hosts import OpsLiveHosts
 
-        args.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        with TemporaryDirectory(prefix="ops-preview-", dir=args.state_dir) as seed:
-            snapshot = WorkItems(seed).record(demo_inspection())
-        observed = datetime.fromisoformat(snapshot["report"]["observed_at"])
-        inventory = demo_assets()
-        hosts = [{"name": DEMO_HOST.name, "observation": simulate_host("healthy", now=observed)}]
-        for asset in inventory["assets"]:
-            if asset["kind"] == "server" and (asset["account"], asset["id"]) == ("qiniu-prod", "qvm-edge-01"):
-                hosts.append({"name": asset["name"], "asset": asset,
-                              "observation": simulate_host("missing", now=observed)})
-        websites = []
-        api_monitor = Monitor("demo-api", "https://api.example.com/health", 200, "stackorion-ok")
-        for monitor, scenario in ((DEMO_MONITOR, "timeout"), (api_monitor, "recovered")):
-            observation = simulate(monitor, scenario, now=observed)
-            websites.append({"domain": urlsplit(monitor.url).hostname, "observation": observation,
-                             "certificate": certificate_status(observation)})
-        payload = {
-            "inspection": inspection_summary(snapshot["report"]),
-            "items": snapshot["items"],
-            "inventory": inventory,
-            "monitoring": {"hosts": hosts, "websites": websites},
-        }
-        handler = partial(OpsPreviewHandler, data=payload)
+            if args.config is None:
+                parser.error("--ops-live-hosts requires --config")
+            try:
+                get_snapshot = OpsLiveHosts(load_connections(args.config)).snapshot
+            except (CatalogError, OSError) as exc:
+                parser.error(str(exc))
+        else:
+            payload = demo_ops_payload(args.state_dir)
+            get_snapshot = lambda: payload
+        handler = partial(OpsPreviewHandler, data=get_snapshot)
         with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
             print(f"StackOrigin 运营大屏 · http://127.0.0.1:{server.server_port}/", flush=True)
             try:

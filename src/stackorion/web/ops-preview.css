@@ -260,6 +260,28 @@
   background: color-mix(in oklab, var(--monitor-signal) 14%, var(--monitor-inset));
   color: var(--monitor-signal);
 }
+.ops-live-mode .ops-monitoring { display: block; }
+.ops-live-mode .ops-host-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+  max-inline-size: 920px;
+}
+.ops-live-mode .ops-monitor-card > .ops-badge { justify-self: start; }
+.ops-live-values {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
+  gap: 8px;
+  margin: 5px 0;
+}
+.ops-live-metric {
+  min-inline-size: 0;
+  padding: 10px 12px;
+  background: var(--monitor-inset);
+  border: 1px solid var(--monitor-line);
+  border-radius: 8px;
+}
+.ops-live-metric dt { color: var(--monitor-muted); font-size: .8125rem; }
+.ops-live-metric dd { margin: 3px 0 0; font-size: 1.125rem; font-weight: 650; overflow-wrap: anywhere; }
+.ops-live-gauge { display: block; inline-size: 100%; margin-block-start: 6px; }
 .ops-queue { grid-area: queue; }
 .ops-assets { grid-area: assets; }
 .ops-inspection { grid-area: inspection; }

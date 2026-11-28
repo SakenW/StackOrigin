@@ -125,6 +125,56 @@ function monitorTime(stamp) {
   return time;
 }
 
+function renderLiveHosts(hosts) {
+  document.body.classList.add('ops-live-mode');
+  document.title = '服务器监控 · StackOrigin';
+  byId('ops-mode').textContent = '真实服务器 · 只读';
+  byId('ops-title').textContent = '服务器监控';
+  byId('heartbeat-title').textContent = '七牛云指标';
+  byId('domain-monitoring').hidden = true;
+  document.querySelector('.ops-board').hidden = true;
+  byId('host-monitor-count').textContent = hosts.length + ' 台已接入';
+  const refresh = byId('refresh-monitoring');
+  refresh.hidden = false;
+  refresh.addEventListener('click', () => location.reload());
+
+  const labels = {
+    observed: ['指标已收到', 'success'],
+    partial: ['部分指标可用', 'warn'],
+    no_data: ['暂无近期指标', 'missing'],
+    unavailable: ['查询未成功', 'high'],
+  };
+  const number = new Intl.NumberFormat('zh-CN', {maximumFractionDigits: 2});
+  for (const {name, sample} of hosts) {
+    const card = monitorCard(name, true);
+    card.append(badge(...labels[sample.status]));
+    const values = element('dl', 'ops-live-values');
+    for (const [key, label, unit] of [
+      ['cpu_percent', 'CPU 使用率', '%'],
+      ['network_rx_kbit', '内网接收量', ' kbit'],
+      ['network_tx_kbit', '内网发送量', ' kbit'],
+    ]) {
+      const value = sample.values[key];
+      const row = element('div', 'ops-live-metric');
+      const amount = element('dd', '', value === undefined ? '未取得' : number.format(value) + unit);
+      row.append(element('dt', '', label), amount);
+      if (key === 'cpu_percent' && value !== undefined) {
+        const gauge = element('meter', 'ops-live-gauge');
+        gauge.min = 0;
+        gauge.max = 100;
+        gauge.value = value;
+        gauge.setAttribute('aria-label', label);
+        amount.append(gauge);
+      }
+      values.append(row);
+    }
+    card.append(values);
+    if (sample.observed_at) card.append(monitorTime(sample.observed_at));
+    if (sample.reason === 'permission_denied') card.append(element('p', 'ops-signal-meta', '云监控接口未授予读取权限'));
+    byId('heartbeats').append(card);
+  }
+}
+
 function renderWebsite(website) {
   const run = website.observation;
   const dns = {true: ['已解析', 'success'], false: ['解析失败', 'high']};
@@ -302,11 +352,17 @@ function render({inspection, items, inventory, monitoring}) {
 try {
   const response = await fetch('/api/ops-preview');
   if (!response.ok) throw new Error('Preview unavailable');
-  render(await response.json());
+  const snapshot = await response.json();
+  if (snapshot.mode === 'live-hosts') {
+    renderLiveHosts(snapshot.hosts);
+  } else {
+    byId('ops-mode').textContent = '模拟数据 · 只读预览';
+    render(snapshot);
+  }
   byId('preview-state').hidden = true;
   byId('preview').hidden = false;
-  enableMonitoringMotion();
+  if (snapshot.mode !== 'live-hosts') enableMonitoringMotion();
 } catch (error) {
-  byId('preview-state').textContent = '模拟快照读取失败，请刷新页面重试。';
+  byId('preview-state').textContent = '监控数据读取失败，请刷新页面重试。';
   console.error(error);
 }
