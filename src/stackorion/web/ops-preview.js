@@ -1,3 +1,5 @@
+import {metricGroupsFor, mountHostTrend} from '/host-trend.js';
+
 const byId = (id) => document.getElementById(id);
 const dateTime = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai',
@@ -10,6 +12,7 @@ const categories = {
   balance: {order: 3, priority: 'attention', title: '账号余额不足'},
 };
 const priorityLabels = {high: '高优先', attention: '需跟进'};
+let liveTrendPlots = [];
 const coverageStates = {
   complete: ['查完', 'success'],
   partial: ['部分完成', 'warn'],
@@ -126,6 +129,8 @@ function monitorTime(stamp) {
 }
 
 function renderLiveHosts(hosts) {
+  for (const plot of liveTrendPlots) plot.destroy();
+  liveTrendPlots = [];
   const labels = {
     observed: ['指标已收到', 'success'],
     partial: ['部分指标可用', 'warn'],
@@ -143,6 +148,7 @@ function renderLiveHosts(hosts) {
       ['network_tx_kbit', '发送量', ' kbit', '未取得'],
     ]],
   ];
+  const trends = [];
   const cards = hosts.map(({name, sample}) => {
     const card = monitorCard(name, true, labels[sample.status]);
     const values = element('div', 'ops-live-values');
@@ -156,24 +162,40 @@ function renderLiveHosts(hosts) {
         const amount = element('dd', value === undefined ? 'ops-live-missing' : '',
           value === undefined ? empty : number.format(value) + unit);
         row.append(element('dt', '', label), amount);
-        if (unit === '%' && value !== undefined) {
-          const gauge = element('meter', 'ops-live-gauge');
-          gauge.min = 0;
-          gauge.max = 100;
-          gauge.value = value;
-          gauge.setAttribute('aria-label', label);
-          amount.append(gauge);
-        }
         rows.append(row);
       }
       values.append(group);
     }
     card.append(values);
+    const history = (sample.cpu_history ?? []).filter((point) => point.value !== null);
+    const trend = element('div', 'ops-live-trend');
+    trend.append(element('h4', '', 'CPU 使用率 · 近 15 分钟'));
+    if (history.length >= 2 && globalThis.uPlot) {
+      const chart = element('div', 'host-chart');
+      const details = element('details', 'ops-panel-details');
+      const points = element('ul', 'ops-live-trend-points');
+      for (const point of [...history].reverse()) {
+        points.append(element('li', '', timeLabel(point.observed_at) + ' · ' + number.format(point.value) + '%'));
+      }
+      details.append(element('summary', '', '采集明细（' + history.length + ' 点）'), points);
+      trend.append(chart, details);
+      trends.push([chart, sample.cpu_history]);
+    } else {
+      trend.append(element('p', 'ops-signal-meta', history.length < 2 ? '近期 CPU 样本不足' : 'CPU 趋势图暂不可用'));
+    }
+    card.append(trend);
     if (sample.observed_at) card.append(monitorTime(sample.observed_at));
     if (sample.reason === 'permission_denied') card.append(element('p', 'ops-signal-meta', '云监控接口未授予读取权限'));
     return card;
   });
   byId('live-heartbeats').replaceChildren(...cards);
+  for (const [chart, history] of trends) {
+    const samples = history.map(({observed_at, value}) => ({
+      observed_at, metrics: value === null ? {} : {cpu_percent: {value}},
+    })).reverse();
+    liveTrendPlots.push(mountHostTrend(chart, metricGroupsFor(samples)[0], samples, null, false,
+      {compact: true, intervalMinutes: 1}));
+  }
 }
 
 function enableLiveHosts(endpoint) {

@@ -435,3 +435,25 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
         self.requests.clear()
         self.assertEqual(adapter.metrics("main")["reason"], "region_mismatch")
         self.assertEqual([path for path, _ in self.requests], ["/v1/vm/instance"])
+
+    def test_metrics_history_reuses_one_read_and_keeps_latest_contract(self):
+        path = "/v1/vm/monitor/instance"
+        now = datetime.now(timezone.utc).replace(microsecond=0)
+        times = [(now - timedelta(minutes=minutes)).isoformat() for minutes in (2, 3, 10)]
+        self.routes[path] = {"data": {"monitor_data": {"instance_monitor_data": [
+            {"time_stamp": times[0], "cpu": 0, "intranet_rx": 4, "intranet_tx": 7},
+            {"time_stamp": times[1], "cpu": "bad"},
+            {"time_stamp": times[2], "cpu": 35},
+            {"time_stamp": (now - timedelta(minutes=16)).isoformat(), "cpu": 55},
+            {"time_stamp": (now + timedelta(minutes=1)).isoformat(), "cpu": 100},
+        ]}}}
+        self.requests.clear()
+        result = self.adapter().metrics("main", include_history=True)
+        self.assertEqual(result["observed_at"], times[0])
+        self.assertEqual(result["values"], {"cpu_percent": 0, "network_rx_kbit": 4, "network_tx_kbit": 7})
+        self.assertEqual(result["cpu_history"], [
+            {"observed_at": times[2], "value": 35},
+            {"observed_at": times[1], "value": None},
+            {"observed_at": times[0], "value": 0},
+        ])
+        self.assertEqual([url for url, _ in self.requests], ["/v1/vm/instance", path])

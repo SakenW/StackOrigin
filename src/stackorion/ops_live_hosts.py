@@ -24,7 +24,7 @@ class OpsLiveHosts:
             if self._cached is None or monotonic() >= self._expires:
                 self._cached = {
                     "mode": "live-hosts",
-                    "hosts": [{"name": alias, "sample": adapter.metrics(alias)}
+                    "hosts": [{"name": alias, "sample": adapter.metrics(alias, include_history=True)}
                               for adapter, alias in self.targets],
                 }
                 self._expires = monotonic() + 60

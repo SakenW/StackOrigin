@@ -282,7 +282,16 @@
 .ops-live-metric dt { font-size: .8125rem; }
 .ops-live-metric dd { margin: 0; font-size: .9375rem; font-weight: 650; text-align: end; }
 .ops-live-metric .ops-live-missing { color: var(--monitor-muted); font-size: .8125rem; font-weight: 400; }
-.ops-live-gauge { inline-size: clamp(46px, 13cqi, 130px); block-size: 8px; margin-inline-start: 7px; color-scheme: dark; }
+.ops-live-trend {
+  --host-chart-color: oklch(83% .15 164);
+  --host-chart-fill: oklch(83% .15 164 / .16);
+  --muted: var(--monitor-muted);
+  --line: var(--monitor-line);
+  min-inline-size: 0;
+}
+.ops-live-trend h4 { margin: 0 0 4px; font-size: .875rem; }
+.ops-live-trend .ops-panel-details summary { color: var(--monitor-muted); }
+.ops-live-trend-points { margin: 0; color: var(--monitor-muted); font-size: .8125rem; }
 .ops-queue { grid-area: queue; }
 .ops-assets { grid-area: assets; }
 .ops-inspection { grid-area: inspection; }

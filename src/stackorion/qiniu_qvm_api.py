@@ -22,6 +22,8 @@ VPC_PATH = "/v1/vm/vpc"
 DISK_PATH = "/v1/vm/disk"
 BANDWIDTH_PATH = "/v1/vpc/common_bandwidth"
 MONITOR_PATH = "/v1/vm/monitor/instance"
+MONITOR_WINDOW_MINUTES = 15
+MONITOR_FRESH_MINUTES = 5
 RESOURCE_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
 PAGE_SIZE = 100
 MAX_PAGES = 10
@@ -130,12 +132,14 @@ class QVMReadAPI:
             raise CatalogError("QVM instance lookup returned an invalid region")
         return region
 
-    def monitor(self, instance_id, now, region=None):
+    def monitor(self, instance_id, now, region=None, *, include_history=False):
         actual_region = self._instance_region(instance_id)
         if region is not None and actual_region != region:
             raise CatalogError("region_mismatch")
         payload = self._get(MONITOR_PATH, region_header=actual_region, instance_id=instance_id,
-                            start_time=int(now.timestamp()) - 900, end_time=int(now.timestamp()))
+                            start_time=int(now.timestamp()) - MONITOR_WINDOW_MINUTES * 60, end_time=int(now.timestamp()))
+        if include_history:
+            return monitor_samples(payload, now, MONITOR_WINDOW_MINUTES)
         return monitor_sample(payload, now)
 
     def instance(self, instance_id):
@@ -226,12 +230,18 @@ class QVMReadAPI:
 
 
 def monitor_sample(payload, now):
+    samples = monitor_samples(payload, now, MONITOR_FRESH_MINUTES)
+    return samples[-1] if samples else None
+
+
+def monitor_samples(payload, now, minutes):
     data = payload.get("data") if isinstance(payload, dict) else None
     monitor = data.get("monitor_data") if isinstance(data, dict) else None
     rows = monitor.get("instance_monitor_data") if isinstance(monitor, dict) else None
     if not isinstance(rows, list) or len(rows) > 900:
         raise CatalogError("invalid_monitor_response")
-    latest = None
+    samples = {}
+    start = now - timedelta(minutes=minutes)
     for row in rows:
         if not isinstance(row, dict) or not isinstance(row.get("time_stamp"), str):
             continue
@@ -239,17 +249,13 @@ def monitor_sample(payload, now):
             stamp = datetime.fromisoformat(row["time_stamp"])
         except ValueError:
             continue
-        if (stamp.tzinfo is not None and now - timedelta(minutes=5) <= stamp <= now
-                and (latest is None or stamp > latest[0])):
-            latest = stamp, row
-    if latest is None:
-        return None
-    stamp, row = latest
-    return stamp.astimezone(timezone.utc).isoformat(), {
-        "cpu_percent": row.get("cpu"),
-        "network_rx_kbit": row.get("intranet_rx"),
-        "network_tx_kbit": row.get("intranet_tx"),
-    }
+        if stamp.tzinfo is not None and start <= stamp <= now:
+            samples.setdefault(stamp, {
+                "cpu_percent": row.get("cpu"),
+                "network_rx_kbit": row.get("intranet_rx"),
+                "network_tx_kbit": row.get("intranet_tx"),
+            })
+    return [(stamp.astimezone(timezone.utc).isoformat(), samples[stamp]) for stamp in sorted(samples)]
 
 
 def _empty_collection(reason=None):

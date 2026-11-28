@@ -22,20 +22,21 @@ const detailClock = new Intl.DateTimeFormat('zh-CN', {
   timeZone:'Asia/Shanghai', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit',
   second:'2-digit', hourCycle:'h23',
 });
+const compactClock = new Intl.DateTimeFormat('zh-CN', {timeZone:'Asia/Shanghai', hour:'2-digit', minute:'2-digit', hourCycle:'h23'});
 
 export function formattedSample(point, unit) {
   return point ? point.value.toLocaleString('zh-CN', { maximumFractionDigits:2 }) + unit : '未取得';
 }
 
-function align(samples, group) {
+function align(samples, group, intervalMinutes) {
   const times = [];
   const values = group.series.map(() => []);
   let previous;
   for (const sample of [...samples].reverse()) {
     const epoch = Date.parse(sample.observed_at) / 1000;
     if (!Number.isFinite(epoch) || (previous && epoch <= previous.epoch)) continue;
-    const interval = sample.interval_minutes || previous?.sample.interval_minutes;
-    if (interval && previous && (sample.trigger === 'scheduled' || previous.sample.trigger === 'scheduled')
+    const interval = intervalMinutes || sample.interval_minutes || previous?.sample.interval_minutes;
+    if (interval && previous && (intervalMinutes || sample.trigger === 'scheduled' || previous.sample.trigger === 'scheduled')
         && epoch - previous.epoch > interval * 90) {
       times.push(previous.epoch + (epoch - previous.epoch) / 2);
       for (const series of values) series.push(null);
@@ -57,8 +58,8 @@ function percentRange(data, zoomY) {
     Math.min(100, Math.ceil((high + padding) * 10) / 10)];
 }
 
-export function mountHostTrend(container, group, samples, resetButton, zoomY = false) {
-  const data = align(samples, group);
+export function mountHostTrend(container, group, samples, resetButton, zoomY = false, {compact = false, intervalMinutes} = {}) {
+  const data = align(samples, group, intervalMinutes);
   if (!data.slice(1).some((series) => series.some((value) => value !== null))) return null;
   const UPlot = globalThis.uPlot;
   if (!UPlot) throw new Error('uPlot unavailable');
@@ -74,19 +75,20 @@ export function mountHostTrend(container, group, samples, resetButton, zoomY = f
   const [first] = data[0];
   const last = data[0].at(-1);
   const bounds = first === last ? {min:first - 60, max:last + 60} : {min:first, max:last};
-  const size = () => ({width:Math.max(container.clientWidth, 180), height: container.clientWidth < 580 ? 230 : 300});
+  const size = () => ({width:Math.max(container.clientWidth, 180),
+    height:compact ? 124 : container.clientWidth < 580 ? 230 : 300});
   const options = {
     ...size(),
-    cursor:{drag:{x:true, y:false, setScale:true}, points:{size:7, width:2}},
+    cursor:{drag:{x:!compact, y:false, setScale:!compact}, points:{size:7, width:2}},
     legend:{show:false},
     scales:{
       x:{time:true, min:bounds.min, max:bounds.max},
       y:{range: group.max ? percentRange(data, zoomY) : (_chart, _min, max) => [0, Math.max(1, max * 1.1)]},
     },
     axes:[
-      {stroke:ink, size:36, space:92, font:'12px system-ui', grid:{show:false}, ticks:{stroke:grid},
-        values:(_chart, ticks) => ticks.map((value) => tickClock.format(new Date(value * 1000)))},
-      {stroke:ink, size:56, space:42, font:'12px system-ui', grid:{stroke:grid, width:1, dash:[4,4]},
+      {stroke:ink, size:compact ? 26 : 36, space:compact ? 56 : 92, font:'12px system-ui', grid:{show:false}, ticks:{stroke:grid},
+        values:(_chart, ticks) => ticks.map((value) => (compact ? compactClock : tickClock).format(new Date(value * 1000)))},
+      {stroke:ink, size:compact ? 44 : 56, space:compact ? 35 : 42, font:'12px system-ui', grid:{stroke:grid, width:1, dash:[4,4]},
         ticks:{show:false},
         values:(_chart, ticks) => ticks.map((value) => value.toLocaleString('zh-CN', {maximumFractionDigits:2}) + (group.max ? '%' : ''))},
     ],
@@ -94,7 +96,8 @@ export function mountHostTrend(container, group, samples, resetButton, zoomY = f
       {},
       ...group.series.map(([, label], index) => ({
         label, stroke:color, width:2, dash:index ? [5,4] : undefined, spanGaps:false,
-        points:{show:data[index + 1].filter((value) => value !== null).length <= 12, size:6},
+        paths:compact ? UPlot.paths.spline() : undefined,
+        points:{show:compact || data[index + 1].filter((value) => value !== null).length <= 12, size:compact ? 5 : 6},
         fill:index ? undefined : (chart) => {
           const gradient = chart.ctx.createLinearGradient(0, chart.bbox.top, 0, chart.bbox.top + chart.bbox.height);
           gradient.addColorStop(0, area);
@@ -116,7 +119,7 @@ export function mountHostTrend(container, group, samples, resetButton, zoomY = f
         tooltip.replaceChildren(document.createTextNode(time + ' UTC+8'), document.createElement('br'), document.createTextNode(value));
       }],
       setScale:[(_plot, key) => {
-        if (key === 'x' && first !== last) resetButton.hidden = false;
+        if (resetButton && key === 'x' && first !== last) resetButton.hidden = false;
       }],
     },
   };
@@ -124,7 +127,7 @@ export function mountHostTrend(container, group, samples, resetButton, zoomY = f
   plot.root.setAttribute('role', 'img');
   plot.root.setAttribute('aria-label', group.name + '历史趋势图，详细采集时间和数值见采集明细。');
   container.append(tooltip);
-  resetButton.hidden = first === last;
+  if (resetButton) resetButton.hidden = first === last;
   const resize = new ResizeObserver(() => {
     const {width, height} = size();
     if (plot.width !== width || plot.height !== height) plot.setSize({width, height});
@@ -136,7 +139,7 @@ export function mountHostTrend(container, group, samples, resetButton, zoomY = f
       resize.disconnect();
       plot.destroy();
       tooltip.remove();
-      resetButton.hidden = true;
+      if (resetButton) resetButton.hidden = true;
     },
   };
 }

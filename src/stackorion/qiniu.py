@@ -6,7 +6,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -123,14 +123,24 @@ class QiniuQVMAdapter:
             raise CatalogError("unknown QVM target")
         return HostTarget(self.targets[alias], "qvm", self.regions.get(alias))
 
-    def metrics(self, alias: str) -> dict[str, Any]:
-        from .qiniu_qvm_api import QVMReadAPI
+    def metrics(self, alias: str, *, include_history=False) -> dict[str, Any]:
+        from .qiniu_qvm_api import MONITOR_FRESH_MINUTES, QVMReadAPI
 
         target = self.host_target(alias)
         now = datetime.now(timezone.utc)
         result = {"target": alias, "source": "qvm", "observed_at": None, "values": {}}
         try:
-            sample = QVMReadAPI(self.credential).monitor(target.resource_id, now, target.region)
+            api = QVMReadAPI(self.credential)
+            if include_history:
+                history = api.monitor(target.resource_id, now, target.region, include_history=True)
+                result["cpu_history"] = []
+                for stamp, values in history:
+                    point = metric_point(values["cpu_percent"], 100, "qvm", stamp)
+                    result["cpu_history"].append({"observed_at": stamp, "value": point["value"] if point else None})
+                boundary = now - timedelta(minutes=MONITOR_FRESH_MINUTES)
+                sample = history[-1] if history and datetime.fromisoformat(history[-1][0]) >= boundary else None
+            else:
+                sample = api.monitor(target.resource_id, now, target.region)
         except CatalogError as exc:
             reason = str(exc)
             if "http_401" in reason or "http_403" in reason:
