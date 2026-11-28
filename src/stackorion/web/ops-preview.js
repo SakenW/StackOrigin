@@ -109,11 +109,11 @@ function queueRow(entry) {
   return row;
 }
 
-function monitorCard(name, connected) {
+function monitorCard(name, connected, status = [connected ? '已接入' : '未接入', 'neutral']) {
   const card = element('article', 'ops-monitor-card');
   card.dataset.connection = connected ? 'connected' : 'unconnected';
   const header = element('header', 'ops-monitor-head');
-  header.append(element('h3', 'ops-signal-name', name), badge(connected ? '已接入' : '未接入', 'neutral'));
+  header.append(element('h3', 'ops-signal-name', name), badge(...status));
   card.append(header);
   return card;
 }
@@ -133,28 +133,40 @@ function renderLiveHosts(hosts) {
     unavailable: ['查询未成功', 'high'],
   };
   const number = new Intl.NumberFormat('zh-CN', {maximumFractionDigits: 2});
+  const groups = [
+    ['资源占用', [
+      ['cpu_percent', 'CPU 使用率', '%', '未取得'],
+      ['memory_percent', '内存使用率', '%', '未接入'],
+    ]],
+    ['内网流量', [
+      ['network_rx_kbit', '接收量', ' kbit', '未取得'],
+      ['network_tx_kbit', '发送量', ' kbit', '未取得'],
+    ]],
+  ];
   const cards = hosts.map(({name, sample}) => {
-    const card = monitorCard(name, true);
-    card.append(badge(...labels[sample.status]));
-    const values = element('dl', 'ops-live-values');
-    for (const [key, label, unit] of [
-      ['cpu_percent', 'CPU 使用率', '%'],
-      ['network_rx_kbit', '内网接收量', ' kbit'],
-      ['network_tx_kbit', '内网发送量', ' kbit'],
-    ]) {
-      const value = sample.values[key];
-      const row = element('div', 'ops-live-metric');
-      const amount = element('dd', '', value === undefined ? '未取得' : number.format(value) + unit);
-      row.append(element('dt', '', label), amount);
-      if (key === 'cpu_percent' && value !== undefined) {
-        const gauge = element('meter', 'ops-live-gauge');
-        gauge.min = 0;
-        gauge.max = 100;
-        gauge.value = value;
-        gauge.setAttribute('aria-label', label);
-        amount.append(gauge);
+    const card = monitorCard(name, true, labels[sample.status]);
+    const values = element('div', 'ops-live-values');
+    for (const [title, metrics] of groups) {
+      const group = element('div', 'ops-live-metric-group');
+      const rows = element('dl', 'ops-live-metrics');
+      group.append(element('h4', '', title), rows);
+      for (const [key, label, unit, empty] of metrics) {
+        const value = sample.values[key];
+        const row = element('div', 'ops-live-metric');
+        const amount = element('dd', value === undefined ? 'ops-live-missing' : '',
+          value === undefined ? empty : number.format(value) + unit);
+        row.append(element('dt', '', label), amount);
+        if (unit === '%' && value !== undefined) {
+          const gauge = element('meter', 'ops-live-gauge');
+          gauge.min = 0;
+          gauge.max = 100;
+          gauge.value = value;
+          gauge.setAttribute('aria-label', label);
+          amount.append(gauge);
+        }
+        rows.append(row);
       }
-      values.append(row);
+      values.append(group);
     }
     card.append(values);
     if (sample.observed_at) card.append(monitorTime(sample.observed_at));
