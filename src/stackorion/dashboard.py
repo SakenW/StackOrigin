@@ -1076,11 +1076,11 @@ class OpsPreviewHandler(DashboardHandler):
 
     def do_GET(self):
         path = urlsplit(self.path).path
-        if path == "/api/ops-preview":
+        if path in self.data:
             if not self.storage_request_allowed():
                 self.send_error(403)
                 return
-            self.send_json(self.data())
+            self.send_json(self.data[path]())
         elif path in self.assets:
             filename, content_type = self.assets[path]
             self.send_body(ROOT.joinpath(filename).read_bytes(), content_type)
@@ -1129,9 +1129,8 @@ def main():
     parser.add_argument("--monitor-config", type=Path, default=os.environ.get("STACKORION_MONITOR_CONFIG"))
     parser.add_argument("--host-monitor-config", type=Path, default=os.environ.get("STACKORION_HOST_MONITOR_CONFIG"))
     parser.add_argument("--operation-preview-config", type=Path)
-    ops_mode = parser.add_mutually_exclusive_group()
-    ops_mode.add_argument("--ops-preview", action="store_true", help="Serve the read-only synthetic operations dashboard")
-    ops_mode.add_argument("--ops-live-hosts", action="store_true", help="Serve read-only QVM metrics from --config")
+    parser.add_argument("--ops-preview", action="store_true", help="Show the synthetic operations dashboard")
+    parser.add_argument("--ops-live-hosts", action="store_true", help="Show read-only QVM metrics from --config")
     args = parser.parse_args()
     if args.mcp:
         build_demo_mcp().run()
@@ -1139,19 +1138,24 @@ def main():
     from functools import partial
 
     if args.ops_preview or args.ops_live_hosts:
+        endpoints = {}
         if args.ops_live_hosts:
             from .ops_live_hosts import OpsLiveHosts
 
             if args.config is None:
                 parser.error("--ops-live-hosts requires --config")
             try:
-                get_snapshot = OpsLiveHosts(load_connections(args.config)).snapshot
+                endpoints["/api/ops-live-hosts"] = OpsLiveHosts(load_connections(args.config)).snapshot
             except (CatalogError, OSError) as exc:
                 parser.error(str(exc))
-        else:
+        if args.ops_preview:
             payload = demo_ops_payload(args.state_dir)
-            get_snapshot = lambda: payload
-        handler = partial(OpsPreviewHandler, data=get_snapshot)
+            if args.ops_live_hosts:
+                payload["live_hosts_enabled"] = True
+            endpoints["/api/ops-preview"] = lambda: payload
+        else:
+            endpoints["/api/ops-preview"] = endpoints["/api/ops-live-hosts"]
+        handler = partial(OpsPreviewHandler, data=endpoints)
         with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
             print(f"StackOrigin 运营大屏 · http://127.0.0.1:{server.server_port}/", flush=True)
             try:

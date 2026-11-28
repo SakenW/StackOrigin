@@ -126,18 +126,6 @@ function monitorTime(stamp) {
 }
 
 function renderLiveHosts(hosts) {
-  document.body.classList.add('ops-live-mode');
-  document.title = '服务器监控 · StackOrigin';
-  byId('ops-mode').textContent = '真实服务器 · 只读';
-  byId('ops-title').textContent = '服务器监控';
-  byId('heartbeat-title').textContent = '七牛云指标';
-  byId('domain-monitoring').hidden = true;
-  document.querySelector('.ops-board').hidden = true;
-  byId('host-monitor-count').textContent = hosts.length + ' 台已接入';
-  const refresh = byId('refresh-monitoring');
-  refresh.hidden = false;
-  refresh.addEventListener('click', () => location.reload());
-
   const labels = {
     observed: ['指标已收到', 'success'],
     partial: ['部分指标可用', 'warn'],
@@ -145,7 +133,7 @@ function renderLiveHosts(hosts) {
     unavailable: ['查询未成功', 'high'],
   };
   const number = new Intl.NumberFormat('zh-CN', {maximumFractionDigits: 2});
-  for (const {name, sample} of hosts) {
+  const cards = hosts.map(({name, sample}) => {
     const card = monitorCard(name, true);
     card.append(badge(...labels[sample.status]));
     const values = element('dl', 'ops-live-values');
@@ -171,8 +159,31 @@ function renderLiveHosts(hosts) {
     card.append(values);
     if (sample.observed_at) card.append(monitorTime(sample.observed_at));
     if (sample.reason === 'permission_denied') card.append(element('p', 'ops-signal-meta', '云监控接口未授予读取权限'));
-    byId('heartbeats').append(card);
+    return card;
+  });
+  byId('live-heartbeats').replaceChildren(...cards);
+}
+
+function enableLiveHosts(endpoint) {
+  const refresh = byId('refresh-monitoring');
+  const status = byId('live-host-status');
+  byId('live-host-monitoring').hidden = false;
+  async function read() {
+    refresh.disabled = true;
+    status.textContent = '正在读取服务器指标…';
+    try {
+      const response = await fetch(endpoint);
+      if (!response.ok) throw new Error('Live metrics unavailable');
+      renderLiveHosts((await response.json()).hosts);
+      status.textContent = '';
+    } catch {
+      status.textContent = '服务器指标读取失败，可点击刷新重试。';
+    } finally {
+      refresh.disabled = false;
+    }
   }
+  refresh.addEventListener('click', read);
+  return read;
 }
 
 function renderWebsite(website) {
@@ -354,14 +365,24 @@ try {
   if (!response.ok) throw new Error('Preview unavailable');
   const snapshot = await response.json();
   if (snapshot.mode === 'live-hosts') {
+    document.title = '服务器监控 · StackOrigin';
+    byId('ops-mode').textContent = '真实服务器 · 只读';
+    byId('ops-title').textContent = '服务器监控';
+    byId('monitoring').hidden = true;
+    document.querySelector('.ops-board').hidden = true;
+    enableLiveHosts('/api/ops-preview');
     renderLiveHosts(snapshot.hosts);
   } else {
-    byId('ops-mode').textContent = '模拟数据 · 只读预览';
+    byId('ops-mode').textContent = snapshot.live_hosts_enabled ? '真实与模拟 · 只读预览' : '模拟数据 · 只读预览';
     render(snapshot);
   }
   byId('preview-state').hidden = true;
   byId('preview').hidden = false;
   if (snapshot.mode !== 'live-hosts') enableMonitoringMotion();
+  if (snapshot.live_hosts_enabled) {
+    byId('ops-demo-label').hidden = false;
+    enableLiveHosts('/api/ops-live-hosts')();
+  }
 } catch (error) {
   byId('preview-state').textContent = '监控数据读取失败，请刷新页面重试。';
   console.error(error);

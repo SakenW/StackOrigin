@@ -260,12 +260,13 @@
   background: color-mix(in oklab, var(--monitor-signal) 14%, var(--monitor-inset));
   color: var(--monitor-signal);
 }
-.ops-live-mode .ops-monitoring { display: block; }
-.ops-live-mode .ops-host-grid {
+.ops-live-hosts { margin-block-end: 22px; }
+.ops-live-hosts .ops-host-grid {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
-  max-inline-size: 920px;
 }
-.ops-live-mode .ops-monitor-card > .ops-badge { justify-self: start; }
+.ops-live-hosts .ops-monitor-card > .ops-badge { justify-self: start; }
+#live-host-status:empty { display: none; }
+.ops-demo-label { color: var(--muted); font-size: .8125rem; font-weight: 650; margin-block-end: 6px; }
 .ops-live-values {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 132px), 1fr));
