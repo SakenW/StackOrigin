@@ -1160,7 +1160,8 @@ function showAssetDetails(asset) {
     add.textContent = '添加服务器监控';
     add.addEventListener('click', () => {
       $('details').close();
-      location.hash = 'servers';
+      location.hash = 'host-settings';
+      updateNavigation();
       hostRegistrationAsset = asset;
       const registration = $('host-registration');
       if (registration.open) loadHostSources();
@@ -1176,7 +1177,8 @@ function showAssetDetails(asset) {
     add.textContent = '添加网站监控';
     add.addEventListener('click', () => {
       $('details').close();
-      location.hash = 'websites';
+      location.hash = 'website-settings';
+      updateNavigation();
       $('website-registration-form').reset();
       $('website-registration-status').textContent = '';
       $('website-registration').open = true;
@@ -1363,6 +1365,7 @@ let displayedSchedule;
 function renderWebsiteSchedule(target) {
   const schedule = target?.schedule;
   $('website-schedule').hidden = !schedule;
+  $('website-schedule-form').hidden = !schedule;
   if (!schedule) {
     displayedSchedule = undefined;
     return;
@@ -1504,6 +1507,7 @@ function websiteHistoryRow(target, run) {
 }
 
 function renderWebsite(target) {
+  $('website-settings-target').value = target?.id ?? '';
   renderWebsiteSchedule(target);
   $('website-scenario-control').hidden = target?.source !== 'synthetic';
   const settings = $('website-conditions');
@@ -1576,6 +1580,7 @@ async function loadWebsites() {
       return option;
     }));
     if (websites.some((target) => target.id === selected)) $('website-target').value = selected;
+    populateMonitorSettingsTarget('website');
     $('website-status').textContent = '';
     renderWebsite(websites.find((target) => target.id === $('website-target').value));
     if (resourceRoute().section === 'websites') applyResourceRoute(document.activeElement === document.body);
@@ -2000,24 +2005,61 @@ async function runInspection(initial = false, readOnly = false) {
   }
 }
 
+const settingsLinks = [...document.querySelectorAll('.settings-nav a')];
+
 function updateNavigation() {
   const activeHash = location.hash.split('?')[0] || '#main';
+  const isSettings = settingsLinks.some((link) => link.hash === activeHash);
+  $('workbench-view').hidden = isSettings;
+  $('settings-view').hidden = !isSettings;
+  $('workspace-view-label').textContent = isSettings ? '设置' : '工作台';
   for (const link of document.querySelectorAll('.sidebar nav a')) {
-    const current = link.hash === activeHash;
+    const current = link.hash === (isSettings ? '#settings' : activeHash);
     link.classList.toggle('current', current);
+    if (current) link.setAttribute('aria-current', isSettings || activeHash === '#main' ? 'page' : 'location');
+    else link.removeAttribute('aria-current');
+  }
+  for (const link of settingsLinks) {
+    const current = link.hash === activeHash;
+    $(link.hash.slice(1)).hidden = !current;
     if (current) link.setAttribute('aria-current', 'location');
     else link.removeAttribute('aria-current');
   }
 }
 
+function scrollToSettingsSection() {
+  if (!$('settings-view').hidden && !location.hash.includes('?')) $('settings-view').scrollIntoView();
+}
+
+function populateMonitorSettingsTarget(kind) {
+  const source = $(kind + '-target');
+  const select = $(kind + '-settings-target');
+  select.replaceChildren(...[...source.options].map((option) => option.cloneNode(true)));
+  select.disabled = !source.options.length;
+}
+
+for (const kind of ['website', 'host']) {
+  $(kind + '-settings-target').addEventListener('change', (event) => {
+    const source = $(kind + '-target');
+    if (source.disabled) {
+      event.target.value = source.value;
+      return;
+    }
+    source.value = event.target.value;
+    source.dispatchEvent(new Event('change'));
+  });
+}
+
 window.addEventListener('hashchange', () => {
   updateNavigation();
+  scrollToSettingsSection();
   focusOnboardingAccount();
   applyResourceRoute(true);
   applyAssetRoute();
   applyWorkItemRoute();
 });
 updateNavigation();
+scrollToSettingsSection();
 focusOnboardingAccount();
 for (const node of document.querySelectorAll('[data-icon]')) drawIcon(node, node.dataset.icon);
 $('run').addEventListener('click', async () => {
@@ -2031,7 +2073,7 @@ $('inspection-plan-form').addEventListener('submit', event => {
 $('inspection-plan-pause').addEventListener('click', () => saveInspectionPlan(false));
 $('inspection-plan-all-accounts').addEventListener('change', editInspectionScope);
 $('inspection-plan-run-selection').addEventListener('click', runSelectedInspection);
-document.querySelector('.inspection-plan').addEventListener('toggle', event => {
+$('inspection-plan').addEventListener('toggle', event => {
   if (event.currentTarget.open) refreshInspectionPlan({force:true});
 });
 refreshInspectionPlan({force:true});
@@ -2275,6 +2317,7 @@ async function requestHostHistory(target) {
 }
 
 function renderHost(target) {
+  $('host-settings-target').value = target?.id ?? '';
   $('host-schedule').hidden = !target;
   $('host-schedule-form').hidden = !target;
   $('host-type').hidden = !target;
@@ -2362,6 +2405,7 @@ async function loadHosts(refresh = false) {
         return option;
       }));
       if (targets.some((target) => target.id === id)) select.value = id;
+      populateMonitorSettingsTarget('host');
       $('host-controls').hidden = !targets.length;
     }
     const after = currentHost();
