@@ -1153,6 +1153,14 @@ def main():
             payload = demo_ops_payload(args.state_dir)
             if args.ops_live_hosts:
                 payload["live_hosts_enabled"] = True
+            if args.monitor_config is not None:
+                from .ops_live_websites import OpsLiveWebsites
+
+                try:
+                    endpoints["/api/ops-live-websites"] = OpsLiveWebsites(load_monitors(args.monitor_config).values()).snapshot
+                except (ValueError, OSError) as exc:
+                    parser.error(str(exc))
+                payload["live_websites_enabled"] = True
             endpoints["/api/ops-preview"] = lambda: payload
         else:
             endpoints["/api/ops-preview"] = endpoints["/api/ops-live-hosts"]

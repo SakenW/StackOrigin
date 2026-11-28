@@ -229,11 +229,15 @@ function renderWebsite(website) {
   };
   const unknown = ['未确认', 'missing'];
   const https = run.status === 'pass' ? ['正常', 'success'] :
+    run.http_status >= 300 && run.http_status < 400 ? ['跳转 ' + run.http_status, 'warn'] :
+    run.phases.tcp?.ok === false ? ['连接失败', 'high'] :
     run.phases.http?.ok === false ? ['未响应', 'high'] :
-    run.status === 'fail' ? ['异常', 'high'] : unknown;
+    run.phases.http?.ok && run.status === 'fail' ? [run.http_status ? 'HTTP ' + run.http_status : '异常', 'high'] : unknown;
+  const certificate = run.reason === 'certificate_verification_failed' ? ['校验失败', 'high']
+    : run.phases.tls?.ok === false ? ['握手失败', 'high'] : certificates[website.certificate.status] ?? unknown;
   const checks = [
     ['DNS', dns[run.phases.dns?.ok] ?? unknown],
-    ['证书', certificates[website.certificate.status] ?? unknown],
+    ['证书', certificate],
     ['HTTPS', https],
   ];
   const tones = checks.map(([, [, tone]]) => tone);
@@ -253,14 +257,17 @@ function renderWebsite(website) {
   return card;
 }
 
-function renderMonitoring({hosts, websites}, assets, mixed) {
+function renderMonitoring({hosts, websites}, assets, mixed, liveWebsites) {
   const observedAssets = new Set(hosts.filter((host) => host.asset).map((host) => assetIdentity(host.asset)));
   const unconnectedHosts = assets.filter((asset) => asset.kind === 'server' && !observedAssets.has(assetIdentity(asset)));
   const observedDomains = new Set(websites.map((website) => website.domain));
   const unconnectedDomains = assets.filter((asset) => asset.kind === 'domain' && !observedDomains.has(asset.name));
   const prefix = mixed ? '模拟 · ' : '';
   byId('host-monitor-count').textContent = prefix + hosts.length + ' 台已接入 · ' + unconnectedHosts.length + ' 台未接入';
-  byId('domain-monitor-count').textContent = prefix + websites.length + ' 个已接入 · ' + unconnectedDomains.length + ' 个未接入';
+  if (!liveWebsites) {
+    byId('domain-monitor-count').textContent = prefix + websites.length + ' 个已接入 · ' + unconnectedDomains.length + ' 个未接入';
+    byId('domain-signals').append(...websites.map(renderWebsite));
+  }
 
   for (const host of hosts) {
     const card = monitorCard(host.name, true);
@@ -274,11 +281,9 @@ function renderMonitoring({hosts, websites}, assets, mixed) {
     card.append(status, pulse, monitorTime(host.observation.observed_at));
     byId('heartbeats').append(card);
   }
-  byId('domain-signals').append(...websites.map(renderWebsite));
-
   for (const [target, unconnected, detail] of [
     ['heartbeats', unconnectedHosts, 'account_label'],
-    ['domain-signals', unconnectedDomains, 'registrar'],
+    ['domain-signals', liveWebsites ? [] : unconnectedDomains, 'registrar'],
   ]) {
     for (const asset of unconnected) {
       const card = monitorCard(asset.name, false);
@@ -286,6 +291,35 @@ function renderMonitoring({hosts, websites}, assets, mixed) {
       byId(target).append(card);
     }
   }
+}
+
+function enableLiveWebsites() {
+  const refresh = byId('refresh-websites');
+  const status = byId('live-website-status');
+  const count = byId('domain-monitor-count');
+  const grid = byId('domain-signals');
+  refresh.hidden = false;
+  async function read() {
+    refresh.disabled = true;
+    refresh.textContent = '正在探测…';
+    grid.setAttribute('aria-busy', 'true');
+    status.textContent = '';
+    try {
+      const response = await fetch('/api/ops-live-websites');
+      if (!response.ok) throw new Error('Website probes unavailable');
+      const {websites} = await response.json();
+      grid.replaceChildren(...websites.map(renderWebsite));
+      count.textContent = '真实 · ' + websites.length + ' 个已接入';
+    } catch {
+      status.textContent = '域名探测结果读取失败，可点击刷新重试。';
+    } finally {
+      grid.removeAttribute('aria-busy');
+      refresh.disabled = false;
+      refresh.textContent = '刷新探测';
+    }
+  }
+  refresh.addEventListener('click', read);
+  return read();
 }
 
 function enableMonitoringMotion() {
@@ -322,8 +356,8 @@ function enableMonitoringMotion() {
   play();
 }
 
-function render({inspection, items, inventory, monitoring, live_hosts_enabled}) {
-  renderMonitoring(monitoring, inventory.assets, live_hosts_enabled);
+function render({inspection, items, inventory, monitoring, live_hosts_enabled, live_websites_enabled}) {
+  renderMonitoring(monitoring, inventory.assets, live_hosts_enabled || live_websites_enabled, live_websites_enabled);
   const queue = items.filter((item) => item.status === 'open')
     .map((item) => describeItem(item, inventory.assets))
     .sort((first, second) => first.category.order - second.category.order);
@@ -406,16 +440,16 @@ try {
     enableLiveHosts('/api/ops-preview');
     renderLiveHosts(snapshot.hosts);
   } else {
-    byId('ops-mode').textContent = snapshot.live_hosts_enabled ? '真实与模拟 · 只读预览' : '模拟数据 · 只读预览';
+    byId('ops-mode').textContent = snapshot.live_hosts_enabled || snapshot.live_websites_enabled
+      ? '真实与模拟 · 只读预览' : '模拟数据 · 只读预览';
     render(snapshot);
   }
   byId('preview-state').hidden = true;
   byId('preview').hidden = false;
   if (snapshot.mode !== 'live-hosts') enableMonitoringMotion();
-  if (snapshot.live_hosts_enabled) {
-    byId('ops-demo-label').hidden = false;
-    enableLiveHosts('/api/ops-live-hosts')();
-  }
+  if (snapshot.live_hosts_enabled || snapshot.live_websites_enabled) byId('ops-demo-label').hidden = false;
+  if (snapshot.live_hosts_enabled) enableLiveHosts('/api/ops-live-hosts')();
+  if (snapshot.live_websites_enabled) enableLiveWebsites();
 } catch (error) {
   byId('preview-state').textContent = '监控数据读取失败，请刷新页面重试。';
   console.error(error);

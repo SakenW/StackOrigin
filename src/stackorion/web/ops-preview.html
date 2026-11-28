@@ -42,8 +42,12 @@
         <section class="ops-monitor-group" id="domain-monitoring" aria-labelledby="domain-title">
           <header class="ops-monitor-heading">
             <h2 id="domain-title">域名与站点</h2>
-            <p class="ops-caption" id="domain-monitor-count"></p>
+            <div class="ops-monitor-actions">
+              <p class="ops-caption" id="domain-monitor-count"></p>
+              <button class="ops-replay" id="refresh-websites" type="button" hidden>刷新探测</button>
+            </div>
           </header>
+          <p class="ops-caption ops-monitor-note" id="live-website-status" role="status"></p>
           <div class="ops-domain-grid" id="domain-signals"></div>
         </section>
       </div>
