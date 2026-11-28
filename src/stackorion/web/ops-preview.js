@@ -220,6 +220,7 @@ function enableLiveHosts(endpoint) {
 
 function renderWebsite(website) {
   const run = website.observation;
+  const phases = run?.phases ?? {};
   const dns = {true: ['已解析', 'success'], false: ['解析失败', 'high']};
   const certificates = {
     valid: ['有效', 'success'],
@@ -227,21 +228,22 @@ function renderWebsite(website) {
     urgent: ['临近到期', 'high'],
     expired: ['已到期', 'high'],
   };
-  const unknown = ['未确认', 'missing'];
-  const https = run.status === 'pass' ? ['正常', 'success'] :
-    run.http_status >= 300 && run.http_status < 400 ? ['跳转 ' + run.http_status, 'warn'] :
-    run.phases.tcp?.ok === false ? ['连接失败', 'high'] :
-    run.phases.http?.ok === false ? ['未响应', 'high'] :
-    run.phases.http?.ok && run.status === 'fail' ? [run.http_status ? 'HTTP ' + run.http_status : '异常', 'high'] : unknown;
-  const certificate = run.reason === 'certificate_verification_failed' ? ['校验失败', 'high']
-    : run.phases.tls?.ok === false ? ['握手失败', 'high'] : certificates[website.certificate.status] ?? unknown;
+  const unknown = run ? ['未确认', 'missing'] : [website.unavailable ? '未取得' : '探测中', 'neutral'];
+  const httpStatus = run?.http_status;
+  const https = run?.status === 'pass' ? ['正常', 'success'] :
+    httpStatus >= 300 && httpStatus < 400 ? ['跳转 ' + httpStatus, 'warn'] :
+    phases.tcp?.ok === false ? ['连接失败', 'high'] :
+    phases.http?.ok === false ? ['未响应', 'high'] :
+    phases.http?.ok && run.status === 'fail' ? [httpStatus ? 'HTTP ' + httpStatus : '异常', 'high'] : unknown;
+  const certificate = run?.reason === 'certificate_verification_failed' ? ['校验失败', 'high']
+    : phases.tls?.ok === false ? ['握手失败', 'high'] : certificates[website.certificate?.status] ?? unknown;
   const checks = [
-    ['DNS', dns[run.phases.dns?.ok] ?? unknown],
+    ['DNS', dns[phases.dns?.ok] ?? unknown],
     ['证书', certificate],
     ['HTTPS', https],
   ];
   const tones = checks.map(([, [, tone]]) => tone);
-  const summary = tones.includes('high') ? ['探测异常', 'high']
+  const summary = !run ? unknown : tones.includes('high') ? ['探测异常', 'high']
     : tones.includes('warn') ? ['需关注', 'warn']
     : tones.includes('missing') ? unknown : ['探测正常', 'success'];
   const card = monitorCard(website.domain, true, summary);
@@ -253,7 +255,8 @@ function renderWebsite(website) {
     stage.append(element('span', '', name), element('strong', '', status));
     stages.append(stage);
   }
-  card.append(stages, monitorTime(run.observed_at));
+  card.append(stages, run ? monitorTime(run.observed_at) : element('p', 'ops-signal-meta',
+    website.unavailable ? '暂无探测结果' : '等待首次探测'));
   return card;
 }
 
@@ -293,12 +296,19 @@ function renderMonitoring({hosts, websites}, assets, mixed, liveWebsites) {
   }
 }
 
-function enableLiveWebsites() {
+function enableLiveWebsites(domains) {
   const refresh = byId('refresh-websites');
   const status = byId('live-website-status');
   const count = byId('domain-monitor-count');
   const grid = byId('domain-signals');
+  const cards = new Map(domains.map((domain) => [domain, renderWebsite({domain})]));
+  grid.replaceChildren(...cards.values());
+  count.textContent = '真实 · ' + domains.length + ' 个已接入';
   refresh.hidden = false;
+  let hasResults = false;
+  function updateCard(website) {
+    cards.get(website.domain).replaceChildren(...renderWebsite(website).children);
+  }
   async function read() {
     refresh.disabled = true;
     refresh.textContent = '正在探测…';
@@ -308,9 +318,10 @@ function enableLiveWebsites() {
       const response = await fetch('/api/ops-live-websites');
       if (!response.ok) throw new Error('Website probes unavailable');
       const {websites} = await response.json();
-      grid.replaceChildren(...websites.map(renderWebsite));
-      count.textContent = '真实 · ' + websites.length + ' 个已接入';
+      websites.forEach(updateCard);
+      hasResults = true;
     } catch {
+      if (!hasResults) domains.forEach((domain) => updateCard({domain, unavailable: true}));
       status.textContent = '域名探测结果读取失败，可点击刷新重试。';
     } finally {
       grid.removeAttribute('aria-busy');
@@ -318,7 +329,10 @@ function enableLiveWebsites() {
       refresh.textContent = '刷新探测';
     }
   }
-  refresh.addEventListener('click', read);
+  refresh.addEventListener('click', () => {
+    if (!hasResults) domains.forEach((domain) => updateCard({domain}));
+    read();
+  });
   return read();
 }
 
@@ -449,7 +463,7 @@ try {
   if (snapshot.mode !== 'live-hosts') enableMonitoringMotion();
   if (snapshot.live_hosts_enabled || snapshot.live_websites_enabled) byId('ops-demo-label').hidden = false;
   if (snapshot.live_hosts_enabled) enableLiveHosts('/api/ops-live-hosts')();
-  if (snapshot.live_websites_enabled) enableLiveWebsites();
+  if (snapshot.live_websites_enabled) enableLiveWebsites(snapshot.live_website_domains);
 } catch (error) {
   byId('preview-state').textContent = '监控数据读取失败，请刷新页面重试。';
   console.error(error);

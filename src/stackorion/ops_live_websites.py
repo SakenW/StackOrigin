@@ -10,10 +10,11 @@ from .website_monitor import certificate_status, probe
 
 class OpsLiveWebsites:
     def __init__(self, monitors):
-        if not monitors:
-            raise ValueError("Configure at least one website monitor")
         self.monitors = tuple(monitors)
-        if len({urlsplit(monitor.url).hostname for monitor in self.monitors}) != len(self.monitors):
+        self.domains = tuple(urlsplit(monitor.url).hostname for monitor in self.monitors)
+        if not self.domains:
+            raise ValueError("Configure at least one website monitor")
+        if len(set(self.domains)) != len(self.domains):
             raise ValueError("Configure one website monitor per domain in the operations preview")
         self._lock = Lock()
         self._cached = None

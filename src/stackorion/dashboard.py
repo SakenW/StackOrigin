@@ -1157,10 +1157,12 @@ def main():
                 from .ops_live_websites import OpsLiveWebsites
 
                 try:
-                    endpoints["/api/ops-live-websites"] = OpsLiveWebsites(load_monitors(args.monitor_config).values()).snapshot
+                    websites = OpsLiveWebsites(load_monitors(args.monitor_config).values())
                 except (ValueError, OSError) as exc:
                     parser.error(str(exc))
+                endpoints["/api/ops-live-websites"] = websites.snapshot
                 payload["live_websites_enabled"] = True
+                payload["live_website_domains"] = websites.domains
             endpoints["/api/ops-preview"] = lambda: payload
         else:
             endpoints["/api/ops-preview"] = endpoints["/api/ops-live-hosts"]
