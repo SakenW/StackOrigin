@@ -1114,10 +1114,17 @@ def main():
         args.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         with TemporaryDirectory(prefix="ops-preview-", dir=args.state_dir) as seed:
             snapshot = WorkItems(seed).record(demo_inspection())
+        observed = datetime.fromisoformat(snapshot["report"]["observed_at"])
+        website = simulate(DEMO_MONITOR, "timeout", now=observed)
         payload = {
             "inspection": inspection_summary(snapshot["report"]),
             "items": snapshot["items"],
             "inventory": demo_assets(),
+            "monitoring": {
+                "host": {"name": DEMO_HOST.name, "observation": simulate_host("healthy", now=observed)},
+                "website": {"domain": urlsplit(DEMO_MONITOR.url).hostname, "observation": website,
+                            "certificate": certificate_status(website)},
+            },
         }
         handler = partial(OpsPreviewHandler, data=payload)
         with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:

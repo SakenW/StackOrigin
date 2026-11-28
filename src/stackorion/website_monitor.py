@@ -127,10 +127,10 @@ def evaluate(monitor, result, code, matched):
     return result
 
 
-def simulate(monitor, scenario):
+def simulate(monitor, scenario, *, now=None):
     if scenario not in {"mismatch", "recovered", "timeout", "certificate-due", "certificate-urgent", "certificate-missing"}:
         raise ValueError("Unknown website simulation")
-    now = datetime.now(timezone.utc)
+    now = now or datetime.now(timezone.utc)
     phases = {"dns": {"ok": True, "ms": 4}, "tcp": {"ok": True, "ms": 12},
               "tls": {"ok": True, "ms": 38}}
     if scenario == "certificate-missing":
