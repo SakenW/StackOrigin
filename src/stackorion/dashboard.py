@@ -1116,16 +1116,23 @@ def main():
         with TemporaryDirectory(prefix="ops-preview-", dir=args.state_dir) as seed:
             snapshot = WorkItems(seed).record(demo_inspection())
         observed = datetime.fromisoformat(snapshot["report"]["observed_at"])
-        website = simulate(DEMO_MONITOR, "timeout", now=observed)
+        inventory = demo_assets()
+        hosts = [{"name": DEMO_HOST.name, "observation": simulate_host("healthy", now=observed)}]
+        for asset in inventory["assets"]:
+            if asset["kind"] == "server" and (asset["account"], asset["id"]) == ("qiniu-prod", "qvm-edge-01"):
+                hosts.append({"name": asset["name"], "asset": asset,
+                              "observation": simulate_host("missing", now=observed)})
+        websites = []
+        api_monitor = Monitor("demo-api", "https://api.example.com/health", 200, "stackorion-ok")
+        for monitor, scenario in ((DEMO_MONITOR, "timeout"), (api_monitor, "recovered")):
+            observation = simulate(monitor, scenario, now=observed)
+            websites.append({"domain": urlsplit(monitor.url).hostname, "observation": observation,
+                             "certificate": certificate_status(observation)})
         payload = {
             "inspection": inspection_summary(snapshot["report"]),
             "items": snapshot["items"],
-            "inventory": demo_assets(),
-            "monitoring": {
-                "host": {"name": DEMO_HOST.name, "observation": simulate_host("healthy", now=observed)},
-                "website": {"domain": urlsplit(DEMO_MONITOR.url).hostname, "observation": website,
-                            "certificate": certificate_status(website)},
-            },
+            "inventory": inventory,
+            "monitoring": {"hosts": hosts, "websites": websites},
         }
         handler = partial(OpsPreviewHandler, data=payload)
         with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:

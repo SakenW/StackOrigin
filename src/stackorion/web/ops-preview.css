@@ -100,29 +100,37 @@
 .ops-monitoring {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-  gap: 16px;
+  gap: clamp(16px, 2vw, 26px);
   margin-block-end: 16px;
 }
-.ops-monitor-body { padding: 0 clamp(14px, 1.7vw, 26px) 12px; }
-.ops-signals, .ops-unmonitored-list { margin: 0; padding: 0; list-style: none; }
-.ops-heartbeat {
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  gap: clamp(10px, 1.8vw, 24px);
-  align-items: center;
-  padding-block: 3px 12px;
+.ops-monitor-group { min-inline-size: 0; }
+.ops-monitor-heading,
+.ops-monitor-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 10px;
 }
-.ops-heartbeat-info { display: grid; gap: 4px; }
+.ops-monitor-heading { margin-block-end: 9px; }
+.ops-monitor-heading h2 { font-size: clamp(1.125rem, 1.5vw, 1.375rem); }
+.ops-host-grid,
+.ops-domain-grid {
+  display: grid;
+  align-items: stretch;
+  gap: 10px;
+}
+.ops-host-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .ops-heartbeat-status {
-  font-size: clamp(1.0625rem, 2vw, 1.75rem);
+  color: var(--monitor-signal);
+  font-size: clamp(1rem, 1.45vw, 1.375rem);
   line-height: 1.16;
-  letter-spacing: -.02em;
 }
 .ops-pulse {
   display: grid;
   place-items: center;
   position: relative;
-  min-block-size: 85px;
+  min-block-size: 62px;
   overflow: clip;
   border: 1px solid var(--monitor-line);
   border-radius: 10px;
@@ -134,13 +142,14 @@
 }
 .ops-wave {
   inline-size: 92%;
-  block-size: 54px;
+  block-size: 42px;
   background: currentColor;
   clip-path: polygon(0 49%, 27% 49%, 34% 40%, 40% 54%, 48% 10%, 54% 84%,
     61% 36%, 67% 49%, 100% 49%, 100% 52%, 66% 52%, 62% 42%, 54% 92%, 48% 20%,
     41% 60%, 34% 44%, 28% 52%, 0 52%);
 }
 .ops-pulse:not([data-tone="success"]) .ops-wave {
+  background: repeating-linear-gradient(90deg, currentColor 0 7px, transparent 7px 13px);
   clip-path: inset(49% 0 48%);
 }
 .ops-sweep {
@@ -149,25 +158,30 @@
   background: linear-gradient(90deg, transparent 44%, currentColor 50%, transparent 51%);
   opacity: 0;
 }
-.ops-signal-name { display: grid; gap: 1px; font-weight: 650; overflow-wrap: anywhere; }
+.ops-signal-name { font-size: .9375rem; font-weight: 650; overflow-wrap: anywhere; }
 .ops-signal-meta { color: var(--monitor-muted); font-size: .8125rem; font-weight: 400; }
 .ops-time-zone { white-space: nowrap; }
-.ops-heartbeat-bar { margin-block: 5px 6px; block-size: 6px; }
-.ops-unmonitored-list { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--monitor-muted); }
 .ops-probe-path {
+  --probe-gap: 10px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 15px;
+  gap: var(--probe-gap);
   list-style: none;
-  margin: 5px 0 9px;
+  margin: 0;
   padding: 0;
+}
+@container (min-width: 340px) {
+  .ops-probe-path { --probe-gap: 15px; }
+}
+@container (max-width: 220px) {
+  .ops-monitor-head { display: grid; justify-items: start; }
 }
 .ops-probe-stage { position: relative; }
 .ops-probe-link {
   position: absolute;
-  inset-inline-start: -15px;
+  inset-inline-start: calc(-1 * var(--probe-gap));
   inset-block-start: 50%;
-  inline-size: 15px;
+  inline-size: var(--probe-gap);
   block-size: 2px;
   background: var(--monitor-signal);
   transform-origin: left;
@@ -176,7 +190,7 @@
   display: grid;
   align-content: center;
   gap: 1px;
-  min-block-size: 62px;
+  min-block-size: 48px;
   padding: 5px clamp(7px, 1.2vw, 16px);
   background: color-mix(in oklab, var(--monitor-signal) 12%, var(--monitor-inset));
   color: var(--monitor-muted);
@@ -201,14 +215,6 @@
   background: currentColor;
   border-radius: 50%;
 }
-.ops-domain-unmonitored {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 5px 10px;
-}
-
 .ops-board {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
@@ -223,6 +229,21 @@
   background: var(--paper);
 }
 .ops-monitor-card {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-inline-size: 0;
+  padding: 11px clamp(11px, 1.35vw, 18px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  container-type: inline-size;
+}
+.ops-monitor-card[data-connection="unconnected"] {
+  --monitor-muted: var(--muted);
+  background: var(--muted-paper);
+  border-style: dashed;
+}
+.ops-monitor-card[data-connection="connected"] {
   --monitor-inset: oklch(17% .031 254);
   --monitor-line: oklch(38% .059 251);
   --monitor-grid: oklch(51% .081 243 / .21);
@@ -234,18 +255,11 @@
 }
 .ops-monitor-card [data-tone="success"] { --monitor-signal: oklch(85% .155 164); }
 .ops-monitor-card [data-tone="high"] { --monitor-signal: oklch(82% .13 23); }
-.ops-monitor-card [data-tone="warn"] { --monitor-signal: oklch(88% .143 83); }
-.ops-monitor-card [data-tone="missing"] { --monitor-signal: oklch(81% .105 306); }
-.ops-monitor-card .ops-clock,
-.ops-monitor-card .ops-panel-details summary { color: var(--monitor-muted); }
-.ops-monitor-card :focus-visible { outline-color: var(--monitor-muted); }
-.ops-monitor-card .ops-badge {
+.ops-monitor-card :is([data-tone="warn"], [data-tone="missing"]) { --monitor-signal: oklch(88% .143 83); }
+.ops-monitor-card[data-connection="connected"] .ops-badge {
   background: color-mix(in oklab, var(--monitor-signal) 14%, var(--monitor-inset));
   color: var(--monitor-signal);
 }
-.ops-monitor-card .ops-heartbeat-bar { background: var(--monitor-inset); }
-.ops-monitor-card .ops-bar-fill[data-tone="success"] { background: var(--monitor-signal); }
-.ops-monitor-card .ops-bar-fill + .ops-bar-fill { box-shadow: inset 1px 0 var(--monitor-inset); }
 .ops-queue { grid-area: queue; }
 .ops-assets { grid-area: assets; }
 .ops-inspection { grid-area: inspection; }
@@ -390,10 +404,10 @@
 }
 
 @media (max-width: 900px) {
+  .ops-monitoring { grid-template-columns: minmax(0, 1fr); }
   .ops-board { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "queue queue" "assets inspection"; }
 }
 @media (max-width: 630px) {
-  .ops-monitoring { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .ops-board { grid-template-columns: minmax(0, 1fr); grid-template-areas: "queue" "assets" "inspection"; }
   .ops-incident-summary { grid-template-columns: .65rem minmax(0, 1fr) auto; row-gap: 5px; }
 }

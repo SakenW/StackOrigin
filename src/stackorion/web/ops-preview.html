@@ -26,27 +26,19 @@
     <p id="preview-state" role="status">正在读取模拟快照…</p>
     <div id="preview" hidden>
       <div class="ops-monitoring" id="monitoring">
-        <section class="ops-card ops-monitor-card" aria-labelledby="heartbeat-title">
-          <header class="ops-card-head">
+        <section class="ops-monitor-group" aria-labelledby="heartbeat-title">
+          <header class="ops-monitor-heading">
             <h2 id="heartbeat-title">服务器心跳</h2>
+            <p class="ops-caption" id="host-monitor-count"></p>
           </header>
-          <div class="ops-monitor-body">
-            <ul class="ops-signals" id="heartbeats"></ul>
-            <div class="ops-stacked-bar ops-heartbeat-bar" id="heartbeat-bar" aria-hidden="true"></div>
-            <details class="ops-panel-details" id="unmonitored-hosts" hidden>
-              <summary id="unmonitored-host-count"></summary>
-              <ul class="ops-unmonitored-list" id="unmonitored-host-list"></ul>
-            </details>
-          </div>
+          <div class="ops-host-grid" id="heartbeats"></div>
         </section>
-        <section class="ops-card ops-monitor-card" aria-labelledby="domain-title">
-          <header class="ops-card-head">
+        <section class="ops-monitor-group" aria-labelledby="domain-title">
+          <header class="ops-monitor-heading">
             <h2 id="domain-title">域名与站点</h2>
-            <time class="ops-clock" id="domain-time"></time>
+            <p class="ops-caption" id="domain-monitor-count"></p>
           </header>
-          <div class="ops-monitor-body">
-            <ul class="ops-signals" id="domain-signals"></ul>
-          </div>
+          <div class="ops-domain-grid" id="domain-signals"></div>
         </section>
       </div>
       <div class="ops-board">

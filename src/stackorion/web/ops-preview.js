@@ -109,36 +109,24 @@ function queueRow(entry) {
   return row;
 }
 
-function renderMonitoring({host, website}, assets) {
-  const received = host.observation.status === 'pass';
-  const heartbeat = element('li', 'ops-heartbeat');
-  const pulse = element('span', 'ops-pulse');
-  pulse.dataset.tone = received ? 'success' : 'missing';
-  pulse.setAttribute('aria-hidden', 'true');
-  pulse.append(element('span', 'ops-wave'), element('span', 'ops-sweep'));
-  const hostLabel = element('div', 'ops-heartbeat-info');
-  const observed = element('time', 'ops-signal-meta', timeLabel(host.observation.observed_at));
-  observed.dateTime = host.observation.observed_at;
-  observed.append(element('span', 'ops-time-zone', ' · 北京时间'));
-  hostLabel.append(element('span', 'ops-signal-name', host.name),
-    element('strong', 'ops-heartbeat-status', received ? '心跳已收到' : '采集未确认'), observed);
-  heartbeat.append(pulse, hostLabel);
-  byId('heartbeats').append(heartbeat);
+function monitorCard(name, connected) {
+  const card = element('article', 'ops-monitor-card');
+  card.dataset.connection = connected ? 'connected' : 'unconnected';
+  const header = element('header', 'ops-monitor-head');
+  header.append(element('h3', 'ops-signal-name', name), badge(connected ? '已接入' : '未接入', 'neutral'));
+  card.append(header);
+  return card;
+}
 
-  const servers = assets.filter((asset) => asset.kind === 'server');
-  const heartbeatTotal = servers.length + 1;
-  byId('heartbeat-bar').append(barFill(1, heartbeatTotal, received ? 'success' : 'missing'),
-    barFill(servers.length, heartbeatTotal, 'neutral'));
-  if (servers.length) {
-    byId('unmonitored-host-count').textContent = servers.length + ' 台未接入心跳';
-    byId('unmonitored-host-list').append(...servers.map((asset) => element('li', '', asset.name)));
-    byId('unmonitored-hosts').hidden = false;
-  }
+function monitorTime(stamp) {
+  const time = element('time', 'ops-signal-meta', timeLabel(stamp));
+  time.dateTime = stamp;
+  time.append(element('span', 'ops-time-zone', ' · 北京时间'));
+  return time;
+}
 
+function renderWebsite(website) {
   const run = website.observation;
-  const domainTime = byId('domain-time');
-  domainTime.dateTime = run.observed_at;
-  domainTime.textContent = timeLabel(run.observed_at) + ' · 北京时间';
   const dns = {true: ['已解析', 'success'], false: ['解析失败', 'high']};
   const certificates = {
     valid: ['有效', 'success'],
@@ -150,32 +138,56 @@ function renderMonitoring({host, website}, assets) {
   const https = run.status === 'pass' ? ['正常', 'success'] :
     run.phases.http?.ok === false ? ['未响应', 'high'] :
     run.status === 'fail' ? ['异常', 'high'] : unknown;
-  for (const domain of assets.filter((asset) => asset.kind === 'domain')) {
-    const row = element('li', 'ops-domain');
-    const label = element('span', 'ops-signal-name', domain.name);
-    row.append(label);
-    if (domain.name === website.domain) {
-      const stages = element('ol', 'ops-probe-path');
-      const checks = [
-        ['DNS', dns[run.phases.dns?.ok] ?? unknown],
-        ['证书', certificates[website.certificate.status] ?? unknown],
-        ['HTTPS', https],
-      ];
-      for (const [name, [status, tone]] of checks) {
-        const stage = element('li', 'ops-probe-stage');
-        stage.dataset.tone = tone;
-        if (stages.children.length) stage.append(element('span', 'ops-probe-link'));
-        const tile = element('div', 'ops-probe-tile');
-        tile.append(element('span', '', name), element('strong', '', status));
-        stage.append(tile);
-        stages.append(stage);
-      }
-      row.append(stages);
-    } else {
-      row.classList.add('ops-domain-unmonitored');
-      row.append(badge('未接入检测', 'neutral'));
+  const card = monitorCard(website.domain, true);
+  const stages = element('ol', 'ops-probe-path');
+  for (const [name, [status, tone]] of [
+    ['DNS', dns[run.phases.dns?.ok] ?? unknown],
+    ['证书', certificates[website.certificate.status] ?? unknown],
+    ['HTTPS', https],
+  ]) {
+    const stage = element('li', 'ops-probe-stage');
+    stage.dataset.tone = tone;
+    if (stages.children.length) stage.append(element('span', 'ops-probe-link'));
+    const tile = element('div', 'ops-probe-tile');
+    tile.append(element('span', '', name), element('strong', '', status));
+    stage.append(tile);
+    stages.append(stage);
+  }
+  card.append(stages, monitorTime(run.observed_at));
+  return card;
+}
+
+function renderMonitoring({hosts, websites}, assets) {
+  const observedAssets = new Set(hosts.filter((host) => host.asset).map((host) => assetIdentity(host.asset)));
+  const unconnectedHosts = assets.filter((asset) => asset.kind === 'server' && !observedAssets.has(assetIdentity(asset)));
+  const observedDomains = new Set(websites.map((website) => website.domain));
+  const unconnectedDomains = assets.filter((asset) => asset.kind === 'domain' && !observedDomains.has(asset.name));
+  byId('host-monitor-count').textContent = hosts.length + ' 台已接入 · ' + unconnectedHosts.length + ' 台未接入';
+  byId('domain-monitor-count').textContent = websites.length + ' 个已接入 · ' + unconnectedDomains.length + ' 个未接入';
+
+  for (const host of hosts) {
+    const card = monitorCard(host.name, true);
+    const received = host.observation.status === 'pass';
+    const pulse = element('div', 'ops-pulse');
+    pulse.dataset.tone = received ? 'success' : 'missing';
+    pulse.setAttribute('aria-hidden', 'true');
+    pulse.append(element('span', 'ops-wave'), element('span', 'ops-sweep'));
+    const status = element('strong', 'ops-heartbeat-status', received ? '心跳已收到' : '采集未确认');
+    status.dataset.tone = received ? 'success' : 'missing';
+    card.append(status, pulse, monitorTime(host.observation.observed_at));
+    byId('heartbeats').append(card);
+  }
+  byId('domain-signals').append(...websites.map(renderWebsite));
+
+  for (const [target, unconnected, detail] of [
+    ['heartbeats', unconnectedHosts, 'account_label'],
+    ['domain-signals', unconnectedDomains, 'registrar'],
+  ]) {
+    for (const asset of unconnected) {
+      const card = monitorCard(asset.name, false);
+      if (asset[detail]) card.append(element('p', 'ops-signal-meta', asset[detail]));
+      byId(target).append(card);
     }
-    byId('domain-signals').append(row);
   }
 }
 
@@ -185,20 +197,23 @@ function enableMonitoringMotion() {
   const settings = matchMedia('(prefers-reduced-motion: reduce)');
   const replay = byId('replay-monitoring');
   const monitor = byId('monitoring');
-  const sweep = monitor.querySelector('.ops-pulse[data-tone="success"] .ops-sweep');
-  const sequence = sweep ? [
-    [sweep, {transform: ['translateX(-100%)', 'translateX(100%)'], opacity: [0, 1, 1, 0]},
-      {at: 0, duration: 1.55, ease: 'linear'}],
-  ] : [];
-  [...monitor.querySelectorAll('.ops-probe-stage')].forEach((stage, index) => {
-    const at = .12 + index * .34;
-    const link = stage.querySelector('.ops-probe-link');
-    if (link) sequence.push([link, {transform: ['scaleX(0)', 'scaleX(1)']},
-      {at: at - .19, duration: .22, ease: 'easeOut'}]);
-    sequence.push([stage.querySelector('.ops-probe-tile'),
-      {transform: ['translateY(7px)', 'translateY(0)'], opacity: [.55, 1]},
-      {at, duration: .38, ease: 'easeOut'}]);
-  });
+  const sequence = [];
+  for (const sweep of monitor.querySelectorAll('.ops-pulse[data-tone="success"] .ops-sweep')) {
+    sequence.push([sweep, {transform: ['translateX(-100%)', 'translateX(100%)'], opacity: [0, 1, 1, 0]},
+      {at: 0, duration: 1.55, ease: 'linear'}]);
+  }
+  for (const path of monitor.querySelectorAll('.ops-probe-path')) {
+    [...path.children].forEach((stage, index) => {
+      const at = .12 + index * .34;
+      const link = stage.querySelector('.ops-probe-link');
+      if (link) sequence.push([link, {transform: ['scaleX(0)', 'scaleX(1)']},
+        {at: at - .19, duration: .22, ease: 'easeOut'}]);
+      sequence.push([stage.querySelector('.ops-probe-tile'),
+        {transform: ['translateY(7px)', 'translateY(0)'], opacity: [.55, 1]},
+        {at, duration: .38, ease: 'easeOut'}]);
+    });
+  }
+  if (!sequence.length) return;
   let timeline;
   function play() {
     timeline?.cancel();
