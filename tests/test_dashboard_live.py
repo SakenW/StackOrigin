@@ -11,7 +11,7 @@ from unittest.mock import Mock, patch
 
 from stackorion.catalog import Catalog, CatalogError
 from stackorion.billing_inspection import compare_closed_months
-from stackorion.dashboard import DashboardData, DashboardHandler, demo_inspection
+from stackorion.dashboard import DashboardData, DashboardHandler, demo_inspection, ops_endpoints
 
 
 class DashboardLiveTests(unittest.TestCase):
@@ -36,6 +36,35 @@ class DashboardLiveTests(unittest.TestCase):
         self.adapter.balance.return_value = {"amounts": {"RealBalance": 8640}}
         self.adapter.security_groups.return_value = {"items": []}
         self.adapter.certificates.return_value = {"status": "complete", "items": []}
+
+    def test_workbench_and_operations_screen_share_a_read_only_preview_api(self):
+        state = self.root / "state"
+        data = DashboardData(state, None, True)
+        panel = ThreadingHTTPServer(("127.0.0.1", 0),
+                                    partial(DashboardHandler, data=data, ops_endpoints=ops_endpoints(state, None, None)))
+        self.addCleanup(panel.server_close)
+        Thread(target=panel.serve_forever, daemon=True).start()
+        self.addCleanup(panel.shutdown)
+        client = HTTPConnection("127.0.0.1", panel.server_port, timeout=3)
+        self.addCleanup(client.close)
+
+        def request(method, path, headers=None):
+            client.request(method, path, headers=headers or {})
+            response = client.getresponse()
+            return response.status, response.read()
+
+        status, workbench = request("GET", "/")
+        self.assertEqual(status, 200)
+        self.assertIn(b'href="/ops"', workbench)
+        self.assertIn(b'id="work-items"', workbench)
+        status, operations = request("GET", "/ops")
+        self.assertEqual(status, 200)
+        self.assertIn(b'id="ops-navigation"', operations)
+        status, snapshot = request("GET", "/api/ops-preview")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(snapshot)["inventory"]["source"], "synthetic")
+        self.assertEqual(request("GET", "/api/ops-preview", {"Host": "other.test"})[0], 403)
+        self.assertGreaterEqual(request("POST", "/api/ops-preview")[0], 400)
 
     def test_development_uses_live_and_only_falls_back_for_missing_credentials(self):
         data = DashboardData(self.root / "state", self.config, True)

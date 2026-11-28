@@ -45,6 +45,12 @@ def asset_route_id(asset, *, by_scope=False):
 
 
 ROOT = files("stackorion").joinpath("web")
+OPS_ASSETS = {
+    "/ops": ("ops-preview.html", "text/html; charset=utf-8"),
+    "/ops-preview.css": ("ops-preview.css", "text/css; charset=utf-8"),
+    "/ops-preview.js": ("ops-preview.js", "text/javascript; charset=utf-8"),
+    "/motion-14.14.0.js": ("motion-14.14.0.js", "text/javascript; charset=utf-8"),
+}
 ASSETS = {
     "/": ("index.html", "text/html; charset=utf-8"),
     "/dashboard.css": ("dashboard.css", "text/css; charset=utf-8"),
@@ -57,6 +63,7 @@ ASSETS = {
     "/uPlot.min.css": ("uPlot.min.css", "text/css; charset=utf-8"),
     "/stackorion-brand.svg": ("stackorion-brand.svg", "image/svg+xml"),
     "/favicon.ico": ("favicon.ico", "image/x-icon"),
+    **OPS_ASSETS,
 }
 
 
@@ -686,8 +693,9 @@ class DashboardData:
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
-    def __init__(self, *args, data, **kwargs):
+    def __init__(self, *args, data, ops_endpoints=None, **kwargs):
         self.data = data
+        self.ops_endpoints = ops_endpoints or {}
         super().__init__(*args, **kwargs)
 
     def storage_request_allowed(self):
@@ -696,6 +704,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         url = urlsplit(self.path)
+        if endpoint := self.ops_endpoints.get(url.path):
+            if self.storage_request_allowed():
+                self.send_json(endpoint())
+            else:
+                self.send_error(403)
+            return
         query = parse_qs(url.query)
         show_mock = query.get("mock", ["1"])[0] != "0"
         if url.path == "/api/onboarding":
@@ -1067,10 +1081,8 @@ class OpsPreviewHandler(DashboardHandler):
     """Serve operations snapshots without exposing workbench actions."""
 
     assets = {
-        "/": ("ops-preview.html", "text/html; charset=utf-8"),
-        "/ops-preview.css": ("ops-preview.css", "text/css; charset=utf-8"),
-        "/ops-preview.js": ("ops-preview.js", "text/javascript; charset=utf-8"),
-        "/motion-14.14.0.js": ("motion-14.14.0.js", "text/javascript; charset=utf-8"),
+        "/": OPS_ASSETS["/ops"],
+        **{path: asset for path, asset in OPS_ASSETS.items() if path != "/ops"},
         **{route: ASSETS[route] for route in ("/dashboard.css", "/stackorion-brand.svg", "/favicon.ico",
                                              "/uPlot.min.css", "/uPlot.iife.min.js", "/host-trend.js")},
     }
@@ -1119,6 +1131,29 @@ def demo_ops_payload(state_dir):
     }
 
 
+def ops_endpoints(state_dir, host_config, website_config, *, hosts_only=False):
+    endpoints = {}
+    if host_config is not None:
+        from .ops_live_hosts import OpsLiveHosts
+
+        endpoints["/api/ops-live-hosts"] = OpsLiveHosts(load_connections(host_config)).snapshot
+    if hosts_only:
+        endpoints["/api/ops-preview"] = endpoints["/api/ops-live-hosts"]
+        return endpoints
+    payload = demo_ops_payload(state_dir)
+    if host_config is not None:
+        payload["live_hosts_enabled"] = True
+    if website_config is not None:
+        from .ops_live_websites import OpsLiveWebsites
+
+        websites = OpsLiveWebsites(load_monitors(website_config).values())
+        endpoints["/api/ops-live-websites"] = websites.snapshot
+        payload["live_websites_enabled"] = True
+        payload["live_website_domains"] = websites.domains
+    endpoints["/api/ops-preview"] = lambda: payload
+    return endpoints
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8765)
@@ -1132,40 +1167,26 @@ def main():
     parser.add_argument("--operation-preview-config", type=Path)
     parser.add_argument("--ops-preview", action="store_true", help="Show the synthetic operations dashboard")
     parser.add_argument("--ops-live-hosts", action="store_true", help="Show read-only QVM metrics from --config")
+    parser.add_argument("--ops-host-config", type=Path, help="Read-only QVM connections for the workbench operations screen")
+    parser.add_argument("--ops-website-config", type=Path, help="Probe targets for the workbench operations screen")
     args = parser.parse_args()
     if args.mcp:
         build_demo_mcp().run()
         return
     from functools import partial
 
-    if args.ops_preview or args.ops_live_hosts:
-        endpoints = {}
-        if args.ops_live_hosts:
-            from .ops_live_hosts import OpsLiveHosts
-
-            if args.config is None:
-                parser.error("--ops-live-hosts requires --config")
-            try:
-                endpoints["/api/ops-live-hosts"] = OpsLiveHosts(load_connections(args.config)).snapshot
-            except (CatalogError, OSError) as exc:
-                parser.error(str(exc))
-        if args.ops_preview:
-            payload = demo_ops_payload(args.state_dir)
-            if args.ops_live_hosts:
-                payload["live_hosts_enabled"] = True
-            if args.monitor_config is not None:
-                from .ops_live_websites import OpsLiveWebsites
-
-                try:
-                    websites = OpsLiveWebsites(load_monitors(args.monitor_config).values())
-                except (ValueError, OSError) as exc:
-                    parser.error(str(exc))
-                endpoints["/api/ops-live-websites"] = websites.snapshot
-                payload["live_websites_enabled"] = True
-                payload["live_website_domains"] = websites.domains
-            endpoints["/api/ops-preview"] = lambda: payload
+    standalone = args.ops_preview or args.ops_live_hosts
+    if args.ops_live_hosts and args.config is None:
+        parser.error("--ops-live-hosts requires --config")
+    try:
+        if standalone:
+            endpoints = ops_endpoints(args.state_dir, args.config if args.ops_live_hosts else None, args.monitor_config,
+                                      hosts_only=not args.ops_preview)
         else:
-            endpoints["/api/ops-preview"] = endpoints["/api/ops-live-hosts"]
+            endpoints = ops_endpoints(args.state_dir, args.ops_host_config, args.ops_website_config)
+    except (CatalogError, ValueError, OSError) as exc:
+        parser.error(str(exc))
+    if standalone:
         handler = partial(OpsPreviewHandler, data=endpoints)
         with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
             print(f"StackOrigin 运营大屏 · http://127.0.0.1:{server.server_port}/", flush=True)
@@ -1180,7 +1201,7 @@ def main():
         data.operations = DashboardOperations.from_file(lambda: load_connections(args.config),
                                                         args.operation_preview_config,
                                                         args.state_dir / "operation-records")
-    handler = partial(DashboardHandler, data=data)
+    handler = partial(DashboardHandler, data=data, ops_endpoints=endpoints)
     with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
         stops = [data.start_inspection_plan(), data.schedules.start(lambda: data.monitors.values(), probe),
                  data.host_schedules.start(lambda: data.registered_hosts().values(), data.collect_server), data.storage.start()]

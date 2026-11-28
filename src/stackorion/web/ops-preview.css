@@ -27,6 +27,9 @@
 }
 
 .ops-topbar img { display: block; max-inline-size: 100%; }
+.ops-navigation:not([hidden]) { display: flex; gap: 12px; flex-wrap: wrap; }
+.ops-navigation a { color: inherit; padding-block: 5px; font-size: .875rem; }
+.ops-navigation [aria-current="page"] { font-weight: 650; text-decoration: underline; text-underline-offset: .35em; }
 .ops-mode {
   display: inline-flex;
   align-items: center;
