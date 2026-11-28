@@ -9,12 +9,13 @@ import os
 from .catalog import Catalog, CatalogError, configured_path, set_enabled
 from .dashboard_bridge import get_inspection, get_work_item, list_work_items, run_inspection
 from .doctor import diagnose
+from .queries import QueryRegistry
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="stackorion")
     parser.add_argument("command", choices=["doctor", "inspection", "work-items", "work-item", "catalog", "accounts", "resources",
-                                            "relations", "targets", "inspect", "discover", "enable", "disable"])
+                                            "relations", "targets", "inspect", "discover", "metrics", "enable", "disable"])
     parser.add_argument("service_id", nargs="?")
     parser.add_argument("target_alias", nargs="?")
     parser.add_argument("--include-demo", action="store_true", help="include synthetic data in inspection and work item output")
@@ -75,6 +76,10 @@ def main() -> None:
             if not args.service_id:
                 parser.error("targets requires service_id")
             result = catalog.adapter(catalog.get(args.service_id)).list_targets()
+        elif args.command == "metrics":
+            if not args.service_id or not args.target_alias:
+                parser.error("metrics requires service_id and target_alias")
+            result = QueryRegistry(catalog).query(args.service_id, "metrics", {"alias": args.target_alias})
         else:
             if not args.service_id or not args.target_alias:
                 parser.error("inspect requires service_id and target_alias")

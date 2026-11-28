@@ -1,14 +1,15 @@
 """Compatibility transport for existing QVM host-monitor registrations."""
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from hashlib import sha256
 import importlib.util
 import json
 
 from .catalog import CatalogError
-from .host_contract import metric_point
+from .host_contract import METRIC_LIMITS, metric_point
 from .qiniu import _regular_owned
+from .qiniu_qvm_api import QVMReadAPI, monitor_sample
 
 @dataclass(frozen=True)
 class QVMHostMonitor:
@@ -48,7 +49,16 @@ def host_binding(catalog, capacity_service, qvm_service, alias):
 
 def qvm_metrics(adapter, monitor, now):
     if adapter.script is None:
-        raise CatalogError("QVM monitoring requires an explicit script_path")
+        sample = QVMReadAPI(adapter.credential).monitor(monitor.instance_id, now, monitor.region)
+    else:
+        sample = _legacy_qvm_sample(adapter, monitor, now)
+    if sample is None:
+        return {}
+    stamp, values = sample
+    return {key: metric_point(value, METRIC_LIMITS[key], "qvm", stamp) for key, value in values.items()}
+
+
+def _legacy_qvm_sample(adapter, monitor, now):
     _regular_owned(adapter.script, secret=False)
     _regular_owned(adapter.credential, secret=True)
     spec = importlib.util.spec_from_file_location("stackorion_qvm_monitor_transport", adapter.script)
@@ -66,28 +76,7 @@ def qvm_metrics(adapter, monitor, now):
     }, extra_headers={"x-qiniu-regionid": monitor.region})
     if response.get("ok") is not True:
         raise CatalogError("QVM instance metrics unavailable")
-    rows = response["data"]["data"]["monitor_data"]["instance_monitor_data"]
-    if not isinstance(rows, list) or len(rows) > 900:
-        raise CatalogError("Unexpected QVM monitor response")
-    samples = []
-    for row in rows:
-        if not isinstance(row, dict) or not isinstance(row.get("time_stamp"), str):
-            continue
-        try:
-            stamp = datetime.fromisoformat(row["time_stamp"])
-        except ValueError:
-            continue
-        if stamp.tzinfo is not None and now - timedelta(minutes=5) <= stamp <= now:
-            samples.append((stamp, row))
-    if not samples:
-        return {}
-    stamp, row = max(samples, key=lambda sample: sample[0])
-    stamp = stamp.astimezone(timezone.utc).isoformat()
-    return {
-        "cpu_percent": metric_point(row.get("cpu"), 100, "qvm", stamp),
-        "network_rx_kbit": metric_point(row.get("intranet_rx"), 10**15, "qvm", stamp),
-        "network_tx_kbit": metric_point(row.get("intranet_tx"), 10**15, "qvm", stamp),
-    }
+    return monitor_sample(response.get("data"), now)
 
 
 def capacity_metrics(adapter, monitor):

@@ -10,7 +10,7 @@ QUERY_UPSTREAMS = frozenset({
 # Only audited methods are dispatchable. New trusted adapter modules may publish
 # their own query_methods dict, so adding a plugin needs no new MCP tool schema.
 BUILTIN_QUERIES={
-    'qiniu-qvm':{'inventory':'discover','instance':'inspect'},
+    'qiniu-qvm':{'inventory':'discover','instance':'inspect','metrics':'metrics'},
     'qiniu-las':{'targets':'target_inventory','instance':'inspect'},
     'qiniu-kodo':{'buckets':'discover','bucket':'inspect'},
     'qiniu-kodo-objects':{'buckets':'discover','bucket':'inspect','objects':'list_objects','object':'stat_object'},

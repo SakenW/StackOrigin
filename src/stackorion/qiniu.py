@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from .catalog import CatalogError
+from .host_contract import METRIC_LIMITS, RESOURCE_ID, HostReading, HostTarget, metric_point
 
 INSTANCE_FIELDS = ("instance_id", "instance_name", "instance_type", "region_id", "zone_id", "status",
                    "private_ip_address", "eip_address", "security_groups", "security_group_ids",
@@ -91,8 +92,9 @@ class QiniuQVMAdapter:
         if not isinstance(settings["targets"], list):
             raise CatalogError("QVM targets must be a list")
         self.targets: dict[str, str] = {}
+        self.regions: dict[str, str] = {}
         for target in settings["targets"]:
-            if not isinstance(target, dict) or set(target) != {"alias", "instance_id"}:
+            if not isinstance(target, dict) or set(target) - {"region"} != {"alias", "instance_id"}:
                 raise CatalogError("invalid QVM target")
             alias, instance_id = target["alias"], target["instance_id"]
             if not isinstance(alias, str) or not isinstance(instance_id, str) or not alias or not instance_id:
@@ -100,13 +102,55 @@ class QiniuQVMAdapter:
             if alias in self.targets or instance_id in self.targets.values():
                 raise CatalogError("duplicate QVM target")
             self.targets[alias] = instance_id
+            if "region" in target:
+                region = target["region"]
+                if not isinstance(region, str) or not RESOURCE_ID.fullmatch(region):
+                    raise CatalogError("invalid QVM target region")
+                self.regions[alias] = region
 
     def list_targets(self) -> list[str]:
         return sorted(self.targets)
 
     @property
     def query_upstreams(self):
-        return {"inventory": "official-api", "instance": "official-api"} if self.script is None else {}
+        upstreams = {"metrics": "official-api"}
+        if self.script is None:
+            upstreams.update(inventory="official-api", instance="official-api")
+        return upstreams
+
+    def host_target(self, alias):
+        if not isinstance(alias, str) or alias not in self.targets:
+            raise CatalogError("unknown QVM target")
+        return HostTarget(self.targets[alias], "qvm", self.regions.get(alias))
+
+    def metrics(self, alias: str) -> dict[str, Any]:
+        from .qiniu_qvm_api import QVMReadAPI
+
+        target = self.host_target(alias)
+        now = datetime.now(timezone.utc)
+        result = {"target": alias, "source": "qvm", "observed_at": None, "values": {}}
+        try:
+            sample = QVMReadAPI(self.credential).monitor(target.resource_id, now, target.region)
+        except CatalogError as exc:
+            reason = str(exc)
+            if "http_401" in reason or "http_403" in reason:
+                reason = "permission_denied"
+            return {**result, "status": "unavailable", "reason": reason}
+        if sample is None:
+            return {**result, "status": "no_data", "reason": "no_recent_sample"}
+        stamp, values = sample
+        clean = {key: point["value"] for key, value in values.items()
+                 if (point := metric_point(value, METRIC_LIMITS[key], "qvm", stamp)) is not None}
+        if not clean:
+            return {**result, "status": "unavailable", "reason": "invalid_monitor_values"}
+        return {**result, "observed_at": stamp, "values": clean,
+                "status": "observed" if len(clean) == len(values) else "partial"}
+
+    def host_reading(self, alias):
+        result = self.metrics(alias)
+        if result["observed_at"] is None:
+            raise CatalogError(result["reason"])
+        return HostReading(result["observed_at"], result["source"], result["values"])
 
     def _run(self, args: list[str]) -> dict[str, Any]:
         if self.script is None:

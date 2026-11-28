@@ -34,4 +34,8 @@ python3 -m venv ./stackorion-env
 
 省略 `script_path` 即可从安装包查询。CLI 使用 `stackorion discover <服务ID>` 和 `stackorion inspect <服务ID> <别名>`。MCP 使用 `discover_service`、`inspect_target`，或通过 `query_service` 调用 `inventory`、`instance`。Web 巡检通过相同配置读取实例和已登记目标的安全组。发现查询每类最多返回 1000 条，分页截断或关联资源读取失败时查看结果中的覆盖状态。
 
-已有 `script_path` 配置继续走原脚本。使用安全组变更计划与执行入口或旧 QVM 指标采集时，保留其显式脚本配置。
+在「服务器监控」选择已登记的 QVM 别名即可采样。需要在资产详情关联这条监控时，在对应目标中加 `"region": "实际地域 ID"`。采集前会向七牛核对实例和地域。七牛提供 CPU 百分比和采样时段内的内网收发流量（kbit）。内存和根分区用量由另行配置的主机采集提供。
+
+CLI 用 `stackorion metrics <服务ID> <别名>` 查询最新采样。MCP 用 `query_service`，传入 `query_id: "metrics"` 和 `parameters: {"alias": "主机别名"}`。采样值为零时会返回 `0`。近期无采样时返回 `no_data`，权限被拒时返回 `unavailable` 和 `permission_denied`。
+
+已有 `script_path` 配置继续用于资产查询、旧监控登记和安全组变更入口。新的指标查询直接使用七牛只读 API。

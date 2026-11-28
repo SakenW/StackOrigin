@@ -101,7 +101,10 @@ def host_candidates(catalog, assets):
         except (CatalogError, OSError, TypeError, ValueError):
             continue
     registered = {}
+    paired_qvm = {(row.qvm_service, row.instance_id) for row in candidates if isinstance(row, QVMHostMonitor)}
     for row in candidates:
+        if isinstance(row, AdapterHostMonitor) and (row.service_id, row.target.resource_id) in paired_qvm:
+            continue
         id_ = "host-" + row.key.split(":", maxsplit=1)[1][:32]
         registered[id_] = replace(row, id=id_)
     return registered

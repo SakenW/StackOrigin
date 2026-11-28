@@ -1,4 +1,7 @@
 from contextlib import redirect_stdout
+import base64
+from datetime import datetime, timedelta, timezone
+import hmac
 import io
 import json
 import os
@@ -76,6 +79,13 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
                              "Qiniu fixture-access-abc:NZobZQ6k-NblvXWw52nFEzj9hOg=")
         params = parse_qs(url.query)
         self.requests.append((url.path, params))
+        if url.path == "/v1/vm/monitor/instance":
+            self.assertEqual(request.get_header("X-qiniu-regionid"), "cn-fixture")
+            self.assertEqual(params["instance_id"], ["i-fixture"])
+            self.assertEqual(int(params["end_time"][0]) - int(params["start_time"][0]), 900)
+            message = f"GET {url.path}?{url.query}\nHost: api-qvm.qiniu.com\nX-Qiniu-Regionid: cn-fixture\n\n"
+            signature = base64.urlsafe_b64encode(hmac.digest(b"fixture-secret-abc", message.encode(), "sha1")).decode()
+            self.assertEqual(request.get_header("Authorization"), f"Qiniu fixture-access-abc:{signature}")
         if url.path == "/v1/vm/instance/i-fixture" and params.get("region_id") != ["cn-fixture"]:
             raise HTTPError(request.full_url, 400, "region_id is required", {}, io.BytesIO())
         value = self.routes[url.path]
@@ -362,7 +372,7 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
         async with Client(build_server(self.catalog)) as client:
             result = await client.call_tool("list_service_capabilities", {"service_id": "qvm-test"})
             self.assertEqual({row["id"]: row["upstream"] for row in result.structured_content["queries"]},
-                             {"inventory": "official-api", "instance": "official-api"})
+                             {"inventory": "official-api", "instance": "official-api", "metrics": "official-api"})
             self.assertEqual(result.structured_content["operation_status"], "unsupported")
             self.assertEqual(result.structured_content["operations"], [])
             for tool, parameters in (
@@ -379,3 +389,49 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(any(row["id"] == "i-fixture" for row in assets))
         self.assertTrue(any(row["id"] == "sg-fixture" for row in assets))
         self.helper.assert_not_called()
+
+    async def test_metrics_from_cli_mcp_and_panel_without_helper_or_capacity_service(self):
+        path = "/v1/vm/monitor/instance"
+        stamp = datetime.now(timezone.utc) - timedelta(seconds=5)
+        self.routes[path] = {"data": {"monitor_data": {"instance_monitor_data": [
+            {"time_stamp": stamp.isoformat(), "cpu": 0, "intranet_rx": 0, "intranet_tx": 42},
+            {"time_stamp": (stamp - timedelta(minutes=1)).isoformat(), "cpu": 10},
+        ]}}}
+        with patch("sys.argv", ["stackorion", "metrics", "qvm-test", "main"]), redirect_stdout(io.StringIO()) as output:
+            main()
+        result = json.loads(output.getvalue())
+        self.assertEqual(result["status"], "observed")
+        self.assertEqual(result["values"], {"cpu_percent": 0, "network_rx_kbit": 0, "network_tx_kbit": 42})
+        async with Client(build_server(self.catalog)) as client:
+            reply = await client.call_tool("query_service", {
+                "service_id": "qvm-test", "query_id": "metrics", "parameters": {"alias": "main"},
+            })
+            self.assertEqual(reply.structured_content, result)
+
+        panel = DashboardData(self.root / "state", self.config, False)
+        [target] = panel.available_hosts()["targets"]
+        registered = panel.register_host({"id": target["id"]})
+        panel.run_host(registered["id"], False, "healthy")
+        [reading] = panel.host_history(registered["id"], False, 1)["history"]
+        self.assertEqual({key: point["value"] for key, point in reading["metrics"].items()}, result["values"])
+        self.assertNotIn("memory_percent", reading["metrics"])
+        self.helper.assert_not_called()
+
+    def test_metrics_distinguishes_missing_partial_permission_and_region_mismatch(self):
+        path = "/v1/vm/monitor/instance"
+        stamp = datetime.now(timezone.utc)
+        rows = [{"time_stamp": (stamp - timedelta(minutes=6)).isoformat(), "cpu": 0}]
+        self.routes[path] = {"data": {"monitor_data": {"instance_monitor_data": rows}}}
+        self.assertEqual(self.adapter().metrics("main")["status"], "no_data")
+        rows.append({"time_stamp": (stamp - timedelta(seconds=5)).isoformat(), "cpu": 0, "intranet_rx": "bad"})
+        result = self.adapter().metrics("main")
+        self.assertEqual((result["status"], result["values"]), ("partial", {"cpu_percent": 0}))
+        self.routes[path] = HTTPError("https://api-qvm.qiniu.com", 403, "forbidden", {}, io.BytesIO())
+        result = self.adapter().metrics("main")
+        self.assertEqual((result["status"], result["reason"], result["values"]),
+                         ("unavailable", "permission_denied", {}))
+        self.settings["targets"][0]["region"] = "cn-other"
+        adapter = QiniuQVMAdapter(self.settings)
+        self.requests.clear()
+        self.assertEqual(adapter.metrics("main")["reason"], "region_mismatch")
+        self.assertEqual([path for path, _ in self.requests], ["/v1/vm/instance"])

@@ -4,6 +4,7 @@ import base64
 import hmac
 import json
 import re
+from datetime import datetime, timedelta, timezone
 from http.client import HTTPException
 from time import monotonic
 from urllib.error import HTTPError
@@ -20,6 +21,7 @@ EIP_PATH = "/v1/vm/eip"
 VPC_PATH = "/v1/vm/vpc"
 DISK_PATH = "/v1/vm/disk"
 BANDWIDTH_PATH = "/v1/vpc/common_bandwidth"
+MONITOR_PATH = "/v1/vm/monitor/instance"
 RESOURCE_ID = re.compile(r"[A-Za-z0-9_-]{1,128}")
 PAGE_SIZE = 100
 MAX_PAGES = 10
@@ -36,18 +38,22 @@ class QVMReadAPI:
         self._deadline = monotonic() + 90
         self._opener = build_opener(_NoRedirect())
 
-    def _get(self, path, **params):
+    def _get(self, path, *, region_header=None, **params):
         remaining = self._deadline - monotonic()
         if remaining <= 0:
             raise CatalogError("query_deadline")
         target = path + ("?" + urlencode(params) if params else "")
         # Qiniu V2 signs the same encoded request target sent over HTTPS.
-        message = f"GET {target}\nHost: {HOST}\n\n".encode()
-        signature = base64.urlsafe_b64encode(hmac.digest(self._secret_key, message, "sha1")).decode()
-        request = Request(f"https://{HOST}{target}", method="GET", headers={
-            "Host": HOST,
-            "Authorization": f"Qiniu {self._access_key}:{signature}",
-        })
+        message = f"GET {target}\nHost: {HOST}"
+        headers = {"Host": HOST}
+        if region_header is not None:
+            headers["X-Qiniu-Regionid"] = region_header
+            message += f"\nX-Qiniu-Regionid: {region_header}"
+        signature = base64.urlsafe_b64encode(
+            hmac.digest(self._secret_key, (message + "\n\n").encode(), "sha1")
+        ).decode()
+        headers["Authorization"] = f"Qiniu {self._access_key}:{signature}"
+        request = Request(f"https://{HOST}{target}", method="GET", headers=headers)
         try:
             with self._opener.open(request, timeout=min(20, remaining)) as response:
                 raw = response.read(RESPONSE_LIMIT + 1)
@@ -110,7 +116,7 @@ class QVMReadAPI:
             "vpcs": self._collection(VPC_PATH, "vpc_id"),
         }}
 
-    def instance(self, instance_id):
+    def _instance_region(self, instance_id):
         if not RESOURCE_ID.fullmatch(instance_id):
             raise CatalogError("invalid QVM instance ID")
         located = self._collection(INSTANCE_PATH, "instance_id", instance_id=instance_id)
@@ -122,6 +128,18 @@ class QVMReadAPI:
         region = matches[0].get("region_id")
         if not isinstance(region, str) or not RESOURCE_ID.fullmatch(region):
             raise CatalogError("QVM instance lookup returned an invalid region")
+        return region
+
+    def monitor(self, instance_id, now, region=None):
+        actual_region = self._instance_region(instance_id)
+        if region is not None and actual_region != region:
+            raise CatalogError("region_mismatch")
+        payload = self._get(MONITOR_PATH, region_header=actual_region, instance_id=instance_id,
+                            start_time=int(now.timestamp()) - 900, end_time=int(now.timestamp()))
+        return monitor_sample(payload, now)
+
+    def instance(self, instance_id):
+        region = self._instance_region(instance_id)
         try:
             instance = self._get(f"{INSTANCE_PATH}/{instance_id}", region_id=region).get("data")
         except CatalogError as exc:
@@ -205,6 +223,33 @@ class QVMReadAPI:
             row["bandwidth_package_id"] = row["cb_id"]
             row.setdefault("expired_time", row.get("expire_time"))
         return result
+
+
+def monitor_sample(payload, now):
+    data = payload.get("data") if isinstance(payload, dict) else None
+    monitor = data.get("monitor_data") if isinstance(data, dict) else None
+    rows = monitor.get("instance_monitor_data") if isinstance(monitor, dict) else None
+    if not isinstance(rows, list) or len(rows) > 900:
+        raise CatalogError("invalid_monitor_response")
+    latest = None
+    for row in rows:
+        if not isinstance(row, dict) or not isinstance(row.get("time_stamp"), str):
+            continue
+        try:
+            stamp = datetime.fromisoformat(row["time_stamp"])
+        except ValueError:
+            continue
+        if (stamp.tzinfo is not None and now - timedelta(minutes=5) <= stamp <= now
+                and (latest is None or stamp > latest[0])):
+            latest = stamp, row
+    if latest is None:
+        return None
+    stamp, row = latest
+    return stamp.astimezone(timezone.utc).isoformat(), {
+        "cpu_percent": row.get("cpu"),
+        "network_rx_kbit": row.get("intranet_rx"),
+        "network_tx_kbit": row.get("intranet_tx"),
+    }
 
 
 def _empty_collection(reason=None):

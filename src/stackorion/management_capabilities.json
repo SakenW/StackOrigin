@@ -397,6 +397,18 @@
       "execution_note": "按已登记的实例 ID 查询详情；显式配置 script_path 时沿用脚本。"
     },
     {
+      "id": "qvm.metrics",
+      "owner": "stackorion",
+      "source": "src/stackorion/qiniu_qvm_api.py",
+      "source_scope": "stackorion",
+      "mutates": false,
+      "mcp_status": "query-connected",
+      "mcp_tools": [
+        "query_service:metrics"
+      ],
+      "execution_note": "按登记别名查询 CPU 与内网收发流量，区分零值、近期无样本和权限拒绝。"
+    },
+    {
       "id": "qvm.allow-port",
       "owner": "server-management",
       "source": "qiniu_qvm_tool.py",
