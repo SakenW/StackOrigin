@@ -27,21 +27,16 @@
     </div>
     <p id="preview-state" role="status">正在读取监控数据…</p>
     <div id="preview" hidden>
-      <section class="ops-live-hosts" id="live-host-monitoring" aria-labelledby="live-host-title" hidden>
-        <header class="ops-monitor-heading">
-          <h2 id="live-host-title">真实服务器 <span class="ops-caption">· 只读</span></h2>
-          <button class="ops-replay" id="refresh-monitoring" type="button">刷新指标</button>
-        </header>
-        <p class="ops-caption" id="live-host-status" role="status"></p>
-        <div class="ops-host-grid" id="live-heartbeats"></div>
-      </section>
-      <p class="ops-demo-label" id="ops-demo-label" hidden>模拟监控与巡检</p>
       <div class="ops-monitoring" id="monitoring">
-        <section class="ops-monitor-group" aria-labelledby="heartbeat-title">
+        <section class="ops-monitor-group ops-server-group" aria-labelledby="heartbeat-title">
           <header class="ops-monitor-heading">
             <h2 id="heartbeat-title">服务器心跳</h2>
-            <p class="ops-caption" id="host-monitor-count"></p>
+            <div class="ops-monitor-actions">
+              <p class="ops-caption" id="host-monitor-count"></p>
+              <button class="ops-replay" id="refresh-monitoring" type="button" hidden>刷新指标</button>
+            </div>
           </header>
+          <p class="ops-caption ops-monitor-note" id="live-host-status" role="status"></p>
           <div class="ops-host-grid" id="heartbeats"></div>
         </section>
         <section class="ops-monitor-group" id="domain-monitoring" aria-labelledby="domain-title">
@@ -52,6 +47,7 @@
           <div class="ops-domain-grid" id="domain-signals"></div>
         </section>
       </div>
+      <p class="ops-demo-label" id="ops-demo-label" hidden>模拟巡检</p>
       <div class="ops-board">
         <section class="ops-card ops-queue" aria-labelledby="queue-title">
           <header class="ops-card-head">

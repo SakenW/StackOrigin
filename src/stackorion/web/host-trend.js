@@ -75,8 +75,8 @@ export function mountHostTrend(container, group, samples, resetButton, zoomY = f
   const [first] = data[0];
   const last = data[0].at(-1);
   const bounds = first === last ? {min:first - 60, max:last + 60} : {min:first, max:last};
-  const size = () => ({width:Math.max(container.clientWidth, 180),
-    height:compact ? 124 : container.clientWidth < 580 ? 230 : 300});
+  const size = () => ({width:Math.max(container.clientWidth, compact ? 1 : 180),
+    height:compact ? 90 : container.clientWidth < 580 ? 230 : 300});
   const options = {
     ...size(),
     cursor:{drag:{x:!compact, y:false, setScale:!compact}, points:{size:7, width:2}},
@@ -86,9 +86,9 @@ export function mountHostTrend(container, group, samples, resetButton, zoomY = f
       y:{range: group.max ? percentRange(data, zoomY) : (_chart, _min, max) => [0, Math.max(1, max * 1.1)]},
     },
     axes:[
-      {stroke:ink, size:compact ? 26 : 36, space:compact ? 56 : 92, font:'12px system-ui', grid:{show:false}, ticks:{stroke:grid},
+      {stroke:ink, size:compact ? 28 : 36, space:compact ? 44 : 92, font:compact ? '11px system-ui' : '12px system-ui', grid:{show:false}, ticks:{stroke:grid},
         values:(_chart, ticks) => ticks.map((value) => (compact ? compactClock : tickClock).format(new Date(value * 1000)))},
-      {stroke:ink, size:compact ? 44 : 56, space:compact ? 35 : 42, font:'12px system-ui', grid:{stroke:grid, width:1, dash:[4,4]},
+      {stroke:ink, size:compact ? 36 : 56, space:compact ? 26 : 42, font:compact ? '11px system-ui' : '12px system-ui', grid:{stroke:grid, width:1, dash:[4,4]},
         ticks:{show:false},
         values:(_chart, ticks) => ticks.map((value) => value.toLocaleString('zh-CN', {maximumFractionDigits:2}) + (group.max ? '%' : ''))},
     ],
@@ -97,7 +97,7 @@ export function mountHostTrend(container, group, samples, resetButton, zoomY = f
       ...group.series.map(([, label], index) => ({
         label, stroke:color, width:2, dash:index ? [5,4] : undefined, spanGaps:false,
         paths:compact ? UPlot.paths.spline() : undefined,
-        points:{show:compact || data[index + 1].filter((value) => value !== null).length <= 12, size:compact ? 5 : 6},
+        points:{show:compact || data[index + 1].filter((value) => value !== null).length <= 12, size:compact ? 4 : 6},
         fill:index ? undefined : (chart) => {
           const gradient = chart.ctx.createLinearGradient(0, chart.bbox.top, 0, chart.bbox.top + chart.bbox.height);
           gradient.addColorStop(0, area);

@@ -138,57 +138,55 @@ function renderLiveHosts(hosts) {
     unavailable: ['查询未成功', 'high'],
   };
   const number = new Intl.NumberFormat('zh-CN', {maximumFractionDigits: 2});
-  const groups = [
-    ['资源占用', [
-      ['cpu_percent', 'CPU 使用率', '%', '未取得'],
-      ['memory_percent', '内存使用率', '%', '未接入'],
-    ]],
-    ['内网流量', [
-      ['network_rx_kbit', '接收量', ' kbit', '未取得'],
-      ['network_tx_kbit', '发送量', ' kbit', '未取得'],
-    ]],
+  const metrics = [
+    ['memory_percent', '内存', '%', '未接入'],
+    ['network_rx_kbit', '内网接收', ' kbit', '未取得'],
+    ['network_tx_kbit', '内网发送', ' kbit', '未取得'],
   ];
   const trends = [];
   const cards = hosts.map(({name, sample}) => {
     const card = monitorCard(name, true, labels[sample.status]);
-    const values = element('div', 'ops-live-values');
-    for (const [title, metrics] of groups) {
-      const group = element('div', 'ops-live-metric-group');
-      const rows = element('dl', 'ops-live-metrics');
-      group.append(element('h4', '', title), rows);
-      for (const [key, label, unit, empty] of metrics) {
-        const value = sample.values[key];
-        const row = element('div', 'ops-live-metric');
-        const amount = element('dd', value === undefined ? 'ops-live-missing' : '',
-          value === undefined ? empty : number.format(value) + unit);
-        row.append(element('dt', '', label), amount);
-        rows.append(row);
-      }
-      values.append(group);
-    }
-    card.append(values);
+    card.classList.add('ops-live-card');
+    const cpu = sample.values.cpu_percent;
     const history = (sample.cpu_history ?? []).filter((point) => point.value !== null);
     const trend = element('div', 'ops-live-trend');
-    trend.append(element('h4', '', 'CPU 使用率 · 近 15 分钟'));
+    const trendHeading = element('div', 'ops-live-trend-heading');
+    trendHeading.append(element('h4', '', 'CPU · 近 15 分钟'),
+      element('strong', '', cpu === undefined ? '未取得' : number.format(cpu) + '%'));
+    trend.append(trendHeading);
+    let details;
     if (history.length >= 2 && globalThis.uPlot) {
       const chart = element('div', 'host-chart');
-      const details = element('details', 'ops-panel-details');
+      details = element('details', 'ops-panel-details');
       const points = element('ul', 'ops-live-trend-points');
       for (const point of [...history].reverse()) {
         points.append(element('li', '', timeLabel(point.observed_at) + ' · ' + number.format(point.value) + '%'));
       }
       details.append(element('summary', '', '采集明细（' + history.length + ' 点）'), points);
-      trend.append(chart, details);
+      trend.append(chart);
       trends.push([chart, sample.cpu_history]);
     } else {
       trend.append(element('p', 'ops-signal-meta', history.length < 2 ? '近期 CPU 样本不足' : 'CPU 趋势图暂不可用'));
     }
-    card.append(trend);
-    if (sample.observed_at) card.append(monitorTime(sample.observed_at));
+    const values = element('dl', 'ops-live-metrics');
+    for (const [key, label, unit, empty] of metrics) {
+      const value = sample.values[key];
+      const row = element('div', 'ops-live-metric');
+      row.append(element('dt', '', label), element('dd', value === undefined ? 'ops-live-missing' : '',
+        value === undefined ? empty : number.format(value) + unit));
+      values.append(row);
+    }
+    const footer = element('div', 'ops-live-meta');
+    footer.append(element('span', 'ops-signal-meta', '真实 · 只读'));
+    if (sample.observed_at) footer.append(monitorTime(sample.observed_at));
+    card.append(trend, values, footer);
+    if (details) card.append(details);
     if (sample.reason === 'permission_denied') card.append(element('p', 'ops-signal-meta', '云监控接口未授予读取权限'));
     return card;
   });
-  byId('live-heartbeats').replaceChildren(...cards);
+  const grid = byId('heartbeats');
+  for (const card of grid.querySelectorAll('.ops-live-card')) card.remove();
+  grid.prepend(...cards);
   for (const [chart, history] of trends) {
     const samples = history.map(({observed_at, value}) => ({
       observed_at, metrics: value === null ? {} : {cpu_percent: {value}},
@@ -201,7 +199,7 @@ function renderLiveHosts(hosts) {
 function enableLiveHosts(endpoint) {
   const refresh = byId('refresh-monitoring');
   const status = byId('live-host-status');
-  byId('live-host-monitoring').hidden = false;
+  refresh.hidden = false;
   async function read() {
     refresh.disabled = true;
     status.textContent = '正在读取服务器指标…';
@@ -252,13 +250,14 @@ function renderWebsite(website) {
   return card;
 }
 
-function renderMonitoring({hosts, websites}, assets) {
+function renderMonitoring({hosts, websites}, assets, mixed) {
   const observedAssets = new Set(hosts.filter((host) => host.asset).map((host) => assetIdentity(host.asset)));
   const unconnectedHosts = assets.filter((asset) => asset.kind === 'server' && !observedAssets.has(assetIdentity(asset)));
   const observedDomains = new Set(websites.map((website) => website.domain));
   const unconnectedDomains = assets.filter((asset) => asset.kind === 'domain' && !observedDomains.has(asset.name));
-  byId('host-monitor-count').textContent = hosts.length + ' 台已接入 · ' + unconnectedHosts.length + ' 台未接入';
-  byId('domain-monitor-count').textContent = websites.length + ' 个已接入 · ' + unconnectedDomains.length + ' 个未接入';
+  const prefix = mixed ? '模拟 · ' : '';
+  byId('host-monitor-count').textContent = prefix + hosts.length + ' 台已接入 · ' + unconnectedHosts.length + ' 台未接入';
+  byId('domain-monitor-count').textContent = prefix + websites.length + ' 个已接入 · ' + unconnectedDomains.length + ' 个未接入';
 
   for (const host of hosts) {
     const card = monitorCard(host.name, true);
@@ -324,8 +323,8 @@ function enableMonitoringMotion() {
   play();
 }
 
-function render({inspection, items, inventory, monitoring}) {
-  renderMonitoring(monitoring, inventory.assets);
+function render({inspection, items, inventory, monitoring, live_hosts_enabled}) {
+  renderMonitoring(monitoring, inventory.assets, live_hosts_enabled);
   const queue = items.filter((item) => item.status === 'open')
     .map((item) => describeItem(item, inventory.assets))
     .sort((first, second) => first.category.order - second.category.order);
@@ -402,7 +401,8 @@ try {
     document.title = '服务器监控 · StackOrigin';
     byId('ops-mode').textContent = '真实服务器 · 只读';
     byId('ops-title').textContent = '服务器监控';
-    byId('monitoring').hidden = true;
+    byId('monitoring').classList.add('ops-monitoring--hosts-only');
+    byId('domain-monitoring').hidden = true;
     document.querySelector('.ops-board').hidden = true;
     enableLiveHosts('/api/ops-preview');
     renderLiveHosts(snapshot.hosts);
