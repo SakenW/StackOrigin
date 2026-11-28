@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>运营大屏 · StackOrigin</title>
+  <link rel="icon" href="/favicon.ico">
+  <link rel="stylesheet" href="/dashboard.css">
+  <link rel="stylesheet" href="/ops-preview.css">
+  <script type="module" src="/ops-preview.js"></script>
+</head>
+<body class="ops">
+  <a class="skip" href="#main">跳到运营概览</a>
+  <header class="ops-masthead">
+    <div class="ops-width ops-topbar">
+      <img src="/stackorion-brand.svg" width="155" height="24" alt="StackOrigin">
+      <span class="ops-mode">模拟数据<span aria-hidden="true"> · </span>只读预览</span>
+    </div>
+  </header>
+  <main class="ops-width ops-main" id="main" tabindex="-1">
+    <h1>运营大屏</h1>
+    <p id="preview-state" role="status">正在读取模拟快照…</p>
+    <div id="preview" hidden>
+      <dl class="ops-metrics">
+        <div data-tone="high"><dt>待处理异常</dt><dd id="pending"></dd><dd class="ops-metric-note" id="priority"></dd></div>
+        <div data-tone="neutral"><dt>关联资产</dt><dd id="impact"></dd><dd class="ops-metric-note" id="inventory-note"></dd></div>
+        <div data-tone="success"><dt>最近巡检 · 查完账号</dt><dd id="complete"></dd><dd class="ops-metric-note" id="snapshot-note"></dd></div>
+      </dl>
+
+      <div class="ops-board">
+        <section class="ops-card ops-queue" aria-labelledby="queue-title">
+          <header class="ops-card-head">
+            <h2 id="queue-title">异常处置队列</h2>
+            <div id="filters" class="ops-filters" role="group" aria-label="按优先级筛选">
+              <button type="button" data-priority="all" aria-pressed="true">全部</button>
+              <button type="button" data-priority="high" aria-pressed="false">高优先</button>
+              <button type="button" data-priority="attention" aria-pressed="false">需跟进</button>
+            </div>
+          </header>
+          <p id="queue-count" class="sr-only" role="status"></p>
+          <div id="queue"></div>
+          <p id="queue-empty" class="ops-empty" hidden>当前筛选下没有待处理异常。</p>
+        </section>
+
+        <section class="ops-card ops-assets" aria-labelledby="asset-title">
+          <header class="ops-card-head">
+            <h2 id="asset-title">关联资产</h2>
+            <span class="ops-caption" id="asset-count"></span>
+          </header>
+          <ul class="ops-asset-list" id="asset-list"></ul>
+          <p class="ops-footnote" id="asset-note"></p>
+        </section>
+
+        <section class="ops-card ops-inspection" aria-labelledby="inspection-title">
+          <header class="ops-card-head">
+            <h2 id="inspection-title">最近一次巡检</h2>
+            <span class="ops-caption" id="coverage-label"></span>
+          </header>
+          <div class="ops-inspection-body">
+            <time class="ops-clock" id="inspection-time"></time>
+            <dl class="ops-coverage" id="coverage"></dl>
+            <details class="ops-account-details">
+              <summary>查看账号结果</summary>
+              <ul id="accounts"></ul>
+            </details>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

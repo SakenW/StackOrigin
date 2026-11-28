@@ -1063,6 +1063,33 @@ def build_demo_mcp():
     return server
 
 
+class OpsPreviewHandler(DashboardHandler):
+    """Serve a fixed, synthetic snapshot without exposing workbench actions."""
+
+    assets = {
+        "/": ("ops-preview.html", "text/html; charset=utf-8"),
+        "/ops-preview.css": ("ops-preview.css", "text/css; charset=utf-8"),
+        "/ops-preview.js": ("ops-preview.js", "text/javascript; charset=utf-8"),
+        **{route: ASSETS[route] for route in ("/dashboard.css", "/stackorion-brand.svg", "/favicon.ico")},
+    }
+
+    def do_GET(self):
+        path = urlsplit(self.path).path
+        if path == "/api/ops-preview":
+            if not self.storage_request_allowed():
+                self.send_error(403)
+                return
+            self.send_json(self.data)
+        elif path in self.assets:
+            filename, content_type = self.assets[path]
+            self.send_body(ROOT.joinpath(filename).read_bytes(), content_type)
+        else:
+            self.send_error(404)
+
+    def do_POST(self):
+        self.send_error(405)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8765)
@@ -1074,11 +1101,32 @@ def main():
     parser.add_argument("--monitor-config", type=Path, default=os.environ.get("STACKORION_MONITOR_CONFIG"))
     parser.add_argument("--host-monitor-config", type=Path, default=os.environ.get("STACKORION_HOST_MONITOR_CONFIG"))
     parser.add_argument("--operation-preview-config", type=Path)
+    parser.add_argument("--ops-preview", action="store_true", help="Serve the read-only synthetic operations dashboard")
     args = parser.parse_args()
     if args.mcp:
         build_demo_mcp().run()
         return
     from functools import partial
+
+    if args.ops_preview:
+        from tempfile import TemporaryDirectory
+
+        args.state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        with TemporaryDirectory(prefix="ops-preview-", dir=args.state_dir) as seed:
+            snapshot = WorkItems(seed).record(demo_inspection())
+        payload = {
+            "inspection": inspection_summary(snapshot["report"]),
+            "items": snapshot["items"],
+            "inventory": demo_assets(),
+        }
+        handler = partial(OpsPreviewHandler, data=payload)
+        with ThreadingHTTPServer(("127.0.0.1", args.port), handler) as server:
+            print(f"StackOrigin 运营大屏 · http://127.0.0.1:{server.server_port}/", flush=True)
+            try:
+                server.serve_forever()
+            except KeyboardInterrupt:
+                pass
+        return
 
     data = DashboardData(args.state_dir, args.config, args.development, args.monitor_config, args.host_monitor_config)
     if args.operation_preview_config:
