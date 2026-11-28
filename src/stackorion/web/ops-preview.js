@@ -4,10 +4,10 @@ const dateTime = new Intl.DateTimeFormat('zh-CN', {
 });
 const timeLabel = (stamp) => dateTime.format(new Date(stamp));
 const categories = {
-  ssh: {order: 0, priority: 'high', title: '公网 SSH 开放', tone: 'high'},
-  coverage: {order: 1, priority: 'attention', title: '账号漏查', tone: 'missing'},
-  expiry: {order: 2, priority: 'attention', title: '实例到期', tone: 'reminder'},
-  balance: {order: 3, priority: 'attention', title: '账号余额不足', tone: 'warn'},
+  ssh: {order: 0, priority: 'high', title: '公网 SSH 开放'},
+  coverage: {order: 1, priority: 'attention', title: '账号漏查'},
+  expiry: {order: 2, priority: 'attention', title: '实例到期'},
+  balance: {order: 3, priority: 'attention', title: '账号余额不足'},
 };
 const priorityLabels = {high: '高优先', attention: '需跟进'};
 const coverageStates = {
@@ -98,15 +98,13 @@ function queueRow(entry) {
   const summary = element('summary', 'ops-incident-summary');
   const heading = element('span', 'ops-incident-title', title);
   heading.append(element('span', 'ops-target', target));
-  const association = assets.length ? assets.length + ' 项关联' + (missing ? ' · 映射不全' : '') :
-    missing ? '未匹配资产' : '账号级 · 无资产映射';
-  summary.append(heading, badge(priorityLabels[category.priority], category.tone),
-    element('span', 'ops-association', association));
+  summary.append(heading, badge(priorityLabels[category.priority], category.priority === 'high' ? 'high' : 'neutral'));
   const evidence = element('div', 'ops-evidence');
   evidence.append(element('p', '', detail),
     element('p', '', '最近命中 ' + timeLabel(item.last_seen)));
   if (target !== item.evidence.account_label) evidence.append(element('p', '', item.evidence.account_label));
   if (assets.length) evidence.append(element('p', '', '关联资产 ' + assets.map((asset) => asset.name).join('、')));
+  if (missing) evidence.append(element('p', '', assets.length ? '部分资产未匹配' : '未匹配到具体资产'));
   row.append(summary, evidence);
   return row;
 }
@@ -116,34 +114,14 @@ function render({inspection, items, inventory}) {
     .map((item) => describeItem(item, inventory.assets))
     .sort((first, second) => first.category.order - second.category.order);
   const high = queue.filter(({category}) => category.priority === 'high').length;
-  const linked = new Map();
-  for (const entry of queue) {
-    for (const asset of entry.assets) {
-      const key = assetIdentity(asset);
-      if (!linked.has(key)) linked.set(key, {asset, titles: new Set()});
-      linked.get(key).titles.add(entry.title);
-    }
-  }
-
-  byId('pending').textContent = queue.length;
-  for (const [label, count, tone] of [
-    [priorityLabels.high, high, 'high'],
-    [priorityLabels.attention, queue.length - high, 'neutral'],
-  ]) {
-    byId('priority-bar').append(barFill(count, queue.length, tone));
-    const legend = element('span', 'ops-chart-key', label + ' ' + count + ' 项');
-    legend.dataset.tone = tone;
-    byId('priority').append(legend);
-  }
-  byId('impact').textContent = linked.size;
-  byId('inventory-note').textContent = '固定盘点共 ' + inventory.assets.length + ' 项';
-  byId('complete').append(String(inspection.coverage.complete),
-    element('span', 'ops-denominator', ' / ' + inspection.expected_accounts));
-  byId('snapshot-note').textContent = timeLabel(inspection.observed_at) + ' · 北京时间';
+  byId('priority-bar').append(barFill(high, queue.length, 'high'),
+    barFill(queue.length - high, queue.length, 'neutral'));
 
   const rows = queue.map(queueRow);
   byId('queue').replaceChildren(...rows);
   const filters = [...byId('filters').querySelectorAll('button')];
+  const totals = {all: queue.length, high, attention: queue.length - high};
+  for (const button of filters) button.append(element('span', 'ops-filter-count', ' ' + totals[button.dataset.priority]));
   function filter(selected) {
     let visible = 0;
     for (const row of rows) {
@@ -157,7 +135,8 @@ function render({inspection, items, inventory}) {
   for (const button of filters) button.addEventListener('click', () => filter(button));
   filter(filters[0]);
 
-  byId('asset-count').textContent = linked.size + ' / ' + inventory.assets.length + ' 项';
+  const linked = new Set(queue.flatMap((entry) => entry.assets.map(assetIdentity)));
+  byId('asset-count').textContent = linked.size + ' 台';
   const ranked = queue.filter((entry) => entry.assets.length)
     .sort((first, second) => second.assets.length - first.assets.length);
   for (const entry of ranked) {
@@ -167,22 +146,16 @@ function render({inspection, items, inventory}) {
     track.setAttribute('aria-hidden', 'true');
     track.append(barFill(entry.assets.length, ranked[0].assets.length, 'reminder'));
     value.append(track, element('span', '', entry.assets.length + ' 项'));
-    row.append(element('dt', '', entry.title + ' · ' + entry.target), value);
+    const label = element('dt', '', entry.title);
+    label.append(element('span', 'ops-impact-names', entry.assets.map((asset) => asset.name).join('、')));
+    row.append(label, value);
     byId('impact-bars').append(row);
-  }
-  for (const {asset, titles} of linked.values()) {
-    const row = element('li', '');
-    const identity = element('div', 'ops-asset-name', asset.name);
-    identity.append(element('small', '', asset.account_label));
-    row.append(identity, element('span', 'ops-asset-signal', [...titles].join('、')));
-    byId('asset-list').append(row);
   }
   const withoutAssets = queue.filter((entry) => !entry.assets.length).length;
   byId('asset-note').textContent = withoutAssets
     ? withoutAssets + ' 项异常无具体资产映射'
     : linked.size ? '' : '当前无关联资产';
   byId('asset-note').hidden = !byId('asset-note').textContent;
-  byId('asset-details').hidden = !linked.size;
 
   const time = byId('inspection-time');
   time.dateTime = inspection.observed_at;

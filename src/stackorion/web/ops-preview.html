@@ -21,29 +21,19 @@
     <h1>运营大屏</h1>
     <p id="preview-state" role="status">正在读取模拟快照…</p>
     <div id="preview" hidden>
-      <dl class="ops-metrics">
-        <div data-tone="high">
-          <dt>待处理异常</dt>
-          <dd id="pending"></dd>
-          <dd class="ops-metric-note">
-            <div class="ops-stacked-bar" id="priority-bar" aria-hidden="true"></div>
-            <div class="ops-priority-labels" id="priority"></div>
-          </dd>
-        </div>
-        <div data-tone="neutral"><dt>关联资产</dt><dd id="impact"></dd><dd class="ops-metric-note" id="inventory-note"></dd></div>
-        <div data-tone="success"><dt>最近巡检 · 查完账号</dt><dd id="complete"></dd><dd class="ops-metric-note" id="snapshot-note"></dd></div>
-      </dl>
-
       <div class="ops-board">
         <section class="ops-card ops-queue" aria-labelledby="queue-title">
           <header class="ops-card-head">
-            <h2 id="queue-title">异常处置队列</h2>
+            <h2 id="queue-title">待处理异常</h2>
             <div id="filters" class="ops-filters" role="group" aria-label="按优先级筛选">
               <button type="button" data-priority="all" aria-pressed="true">全部</button>
               <button type="button" data-priority="high" aria-pressed="false">高优先</button>
               <button type="button" data-priority="attention" aria-pressed="false">需跟进</button>
             </div>
           </header>
+          <div class="ops-priority">
+            <div class="ops-stacked-bar" id="priority-bar" aria-hidden="true"></div>
+          </div>
           <p id="queue-count" class="sr-only" role="status"></p>
           <div id="queue"></div>
           <p id="queue-empty" class="ops-empty" hidden>当前筛选下没有待处理异常。</p>
@@ -57,10 +47,6 @@
           <div class="ops-assets-body">
             <dl class="ops-impact-bars" id="impact-bars"></dl>
             <p class="ops-footnote" id="asset-note"></p>
-            <details class="ops-panel-details" id="asset-details" hidden>
-              <summary>查看关联资产</summary>
-              <ul class="ops-asset-list" id="asset-list"></ul>
-            </details>
           </div>
         </section>
 
@@ -73,9 +59,9 @@
             <time class="ops-clock" id="inspection-time"></time>
             <div class="ops-stacked-bar" id="coverage-bar" aria-hidden="true"></div>
             <dl class="ops-coverage" id="coverage"></dl>
-            <p class="ops-footnote" id="disabled-accounts"></p>
             <details class="ops-panel-details ops-account-details">
               <summary>查看账号结果</summary>
+              <p class="ops-footnote" id="disabled-accounts"></p>
               <ul id="accounts"></ul>
             </details>
           </div>
