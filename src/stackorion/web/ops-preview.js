@@ -35,6 +35,17 @@ function uniqueAsset(assets, matches) {
   return candidates.length === 1 ? candidates[0] : null;
 }
 
+function assetIdentity(asset) {
+  return JSON.stringify([asset.kind, asset.account, asset.region, asset.id, asset.scope]);
+}
+
+function barFill(count, total, tone) {
+  const fill = element('span', 'ops-bar-fill');
+  fill.dataset.tone = tone;
+  fill.style.inlineSize = (total ? count / total * 100 : 0) + '%';
+  return fill;
+}
+
 function describeItem(item, inventory) {
   const evidence = item.evidence;
   const category = categories[evidence.kind];
@@ -76,6 +87,7 @@ function describeItem(item, inventory) {
       break;
   }
 
+  assets = [...new Map(assets.map((asset) => [assetIdentity(asset), asset])).values()];
   return {item, category, title, target, detail, assets, missing};
 }
 
@@ -107,14 +119,22 @@ function render({inspection, items, inventory}) {
   const linked = new Map();
   for (const entry of queue) {
     for (const asset of entry.assets) {
-      const titles = linked.get(asset) || [];
-      if (!titles.includes(entry.title)) titles.push(entry.title);
-      linked.set(asset, titles);
+      const key = assetIdentity(asset);
+      if (!linked.has(key)) linked.set(key, {asset, titles: new Set()});
+      linked.get(key).titles.add(entry.title);
     }
   }
 
   byId('pending').textContent = queue.length;
-  byId('priority').textContent = high + ' 项高优先 · ' + (queue.length - high) + ' 项需跟进';
+  for (const [label, count, tone] of [
+    [priorityLabels.high, high, 'high'],
+    [priorityLabels.attention, queue.length - high, 'neutral'],
+  ]) {
+    byId('priority-bar').append(barFill(count, queue.length, tone));
+    const legend = element('span', 'ops-chart-key', label + ' ' + count + ' 项');
+    legend.dataset.tone = tone;
+    byId('priority').append(legend);
+  }
   byId('impact').textContent = linked.size;
   byId('inventory-note').textContent = '固定盘点共 ' + inventory.assets.length + ' 项';
   byId('complete').append(String(inspection.coverage.complete),
@@ -138,28 +158,46 @@ function render({inspection, items, inventory}) {
   filter(filters[0]);
 
   byId('asset-count').textContent = linked.size + ' / ' + inventory.assets.length + ' 项';
-  for (const [asset, titles] of linked) {
+  const ranked = queue.filter((entry) => entry.assets.length)
+    .sort((first, second) => second.assets.length - first.assets.length);
+  for (const entry of ranked) {
+    const row = element('div', 'ops-impact-row');
+    const value = element('dd', 'ops-impact-value');
+    const track = element('span', 'ops-impact-track');
+    track.setAttribute('aria-hidden', 'true');
+    track.append(barFill(entry.assets.length, ranked[0].assets.length, 'reminder'));
+    value.append(track, element('span', '', entry.assets.length + ' 项'));
+    row.append(element('dt', '', entry.title + ' · ' + entry.target), value);
+    byId('impact-bars').append(row);
+  }
+  for (const {asset, titles} of linked.values()) {
     const row = element('li', '');
     const identity = element('div', 'ops-asset-name', asset.name);
     identity.append(element('small', '', asset.account_label));
-    row.append(identity, element('span', 'ops-asset-signal', titles.join('、')));
+    row.append(identity, element('span', 'ops-asset-signal', [...titles].join('、')));
     byId('asset-list').append(row);
   }
   const withoutAssets = queue.filter((entry) => !entry.assets.length).length;
   byId('asset-note').textContent = withoutAssets
-    ? withoutAssets + ' 项异常未关联具体资产'
-    : linked.size ? '仅统计待处理异常中已确认的关联' : '当前无关联资产';
+    ? withoutAssets + ' 项异常无具体资产映射'
+    : linked.size ? '' : '当前无关联资产';
+  byId('asset-note').hidden = !byId('asset-note').textContent;
+  byId('asset-details').hidden = !linked.size;
 
   const time = byId('inspection-time');
   time.dateTime = inspection.observed_at;
   time.textContent = timeLabel(inspection.observed_at) + ' · 北京时间';
   byId('coverage-label').textContent = inspection.expected_accounts + ' 个应查账号';
-  for (const [state, [label, tone]] of Object.entries(coverageStates)) {
+  for (const state of ['complete', 'partial', 'unavailable']) {
+    const [label, tone] = coverageStates[state];
+    const count = inspection.coverage[state];
+    byId('coverage-bar').append(barFill(count, inspection.expected_accounts, tone));
     const block = element('div', '');
     block.dataset.tone = tone;
-    block.append(element('dt', '', label), element('dd', '', inspection.coverage[state]));
+    block.append(element('dt', 'ops-chart-key', label), element('dd', '', count));
     byId('coverage').append(block);
   }
+  byId('disabled-accounts').textContent = '另有 ' + inspection.coverage.disabled + ' 个已停用账号';
   for (const account of inspection.accounts) {
     const row = element('li', '', account.label);
     row.append(badge(...coverageStates[account.status]));

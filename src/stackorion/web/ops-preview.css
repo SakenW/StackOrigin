@@ -83,6 +83,37 @@
 .ops-metrics .ops-metric-note { color: var(--muted); font-size: .8125rem; }
 .ops-denominator { font-size: .52em; color: var(--muted); letter-spacing: -.025em; }
 
+.ops-stacked-bar,
+.ops-impact-track {
+  display: flex;
+  block-size: 10px;
+  border-radius: 999px;
+  background: var(--muted-paper);
+  overflow: clip;
+}
+.ops-bar-fill { flex: none; background: var(--tone-fill); }
+.ops-stacked-bar .ops-bar-fill + .ops-bar-fill { box-shadow: inset 1px 0 var(--paper); }
+.ops-priority-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 16px;
+  margin-block-start: 6px;
+}
+.ops-chart-key {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--tone-ink);
+}
+.ops-chart-key::before {
+  content: '';
+  flex: none;
+  inline-size: 7px;
+  block-size: 7px;
+  border-radius: 2px;
+  background: var(--tone-fill);
+}
+
 .ops-board {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
@@ -179,6 +210,23 @@
 .ops-evidence p + p { margin-block-start: 3px; }
 .ops-empty { padding: 12px 22px 22px; color: var(--muted); }
 
+.ops-assets-body,
+.ops-inspection-body { padding: 0 clamp(14px, 1.7vw, 26px) 12px; }
+.ops-impact-bars { display: grid; gap: 10px; margin: 0 0 9px; }
+.ops-impact-row { display: grid; gap: 2px; }
+.ops-impact-row dt { font-weight: 550; overflow-wrap: anywhere; }
+.ops-impact-value {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 10px;
+  align-items: center;
+  margin: 0;
+  color: var(--muted);
+  font-size: .8125rem;
+}
+.ops-impact-track { block-size: 8px; }
+.ops-impact-track .ops-bar-fill { border-radius: inherit; }
+
 .ops-asset-list,
 .ops-account-details ul { margin: 0; padding: 0; list-style: none; }
 .ops-asset-list li {
@@ -187,34 +235,30 @@
   justify-content: space-between;
   align-items: center;
   gap: 4px 12px;
-  padding: 8px clamp(14px, 1.7vw, 26px);
+  padding-block: 6px;
   border-block-start: 1px solid var(--line);
 }
 .ops-asset-name { display: grid; gap: 1px; font-weight: 650; overflow-wrap: anywhere; }
 .ops-asset-name small, .ops-asset-signal { color: var(--muted); font-size: .8125rem; font-weight: 400; }
-.ops-footnote { border-block-start: 1px solid var(--line); padding: 10px clamp(14px, 1.7vw, 26px); }
+.ops-footnote { margin-block: 4px; }
 
-.ops-inspection-body { padding: 0 clamp(14px, 1.7vw, 26px) 12px; }
 .ops-clock { color: var(--muted); font-size: .875rem; }
+.ops-inspection-body .ops-stacked-bar { margin-block-start: 10px; }
 .ops-coverage {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-block: 12px 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-block: 6px;
   gap: 6px;
 }
 .ops-coverage > div {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 7px 5px;
-  border-radius: 9px;
-  background: var(--tone-bg);
-  color: var(--tone-ink);
-  text-align: center;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 1px 6px;
 }
-.ops-coverage dt { font-size: .75rem; }
-.ops-coverage dd { margin: 0; font-size: 1.25rem; font-weight: 650; line-height: 1.25; }
-.ops-account-details summary { color: var(--accent); cursor: pointer; min-block-size: 30px; padding-block: 4px; }
+.ops-coverage dt { font-size: .8125rem; }
+.ops-coverage dd { margin: 0; font-size: .9375rem; font-weight: 650; }
+.ops-panel-details summary { color: var(--accent); cursor: pointer; min-block-size: 30px; padding-block: 4px; }
 .ops-account-details li {
   display: flex;
   flex-wrap: wrap;
@@ -234,8 +278,6 @@
   .ops-board { gap: 12px 16px; }
   .ops-card-head { min-block-size: 52px; padding-block: 7px; }
   .ops-incident-summary { min-block-size: 58px; padding-block: 7px; }
-  .ops-asset-list li { padding-block: 6px; }
-  .ops-footnote { padding-block: 7px; }
 }
 
 @media (max-width: 900px) {
