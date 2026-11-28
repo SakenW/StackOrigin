@@ -67,6 +67,19 @@ class DashboardLiveTests(unittest.TestCase):
         self.assertEqual(request("GET", "/api/ops-preview", {"Host": "other.test"})[0], 403)
         self.assertGreaterEqual(request("POST", "/api/ops-preview")[0], 400)
 
+    def test_real_operations_screen_uses_registered_workbench_data(self):
+        state = self.root / "state"
+        data = DashboardData(state, None, False)
+        data.register_website({"url": "https://example.com/health", "expected_status": 200, "contains": None})
+        snapshot = ops_endpoints(state, None, None, workbench=data)["/api/ops-preview"]()
+        self.assertEqual(snapshot["source"], "live")
+        self.assertEqual(snapshot["inspection"]["status"], "empty")
+        self.assertEqual(snapshot["items"], [])
+        self.assertEqual(snapshot["inventory"]["assets"], [])
+        self.assertEqual(snapshot["monitoring"]["websites"], [{
+            "domain": "example.com", "observation": None, "unavailable": True, "certificate": None,
+        }])
+
     def test_development_uses_live_and_only_falls_back_for_missing_credentials(self):
         data = DashboardData(self.root / "state", self.config, True)
         with patch.object(Catalog, "adapter", return_value=self.adapter) as lookup:

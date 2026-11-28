@@ -29,3 +29,7 @@ class OpsLiveHosts:
                 }
                 self._expires = monotonic() + 60
             return self._cached
+
+    @property
+    def resource_ids(self):
+        return {adapter.host_target(alias).resource_id for adapter, alias in self.targets}

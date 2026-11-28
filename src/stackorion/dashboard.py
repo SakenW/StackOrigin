@@ -706,7 +706,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
         url = urlsplit(self.path)
         if endpoint := self.ops_endpoints.get(url.path):
             if self.storage_request_allowed():
-                self.send_json(endpoint())
+                try:
+                    self.send_json(endpoint())
+                except (sqlite3.Error, CatalogError, OSError):
+                    self.send_error(503, "Local monitoring data unavailable")
             else:
                 self.send_error(403)
             return
@@ -1131,26 +1134,66 @@ def demo_ops_payload(state_dir):
     }
 
 
-def ops_endpoints(state_dir, host_config, website_config, *, hosts_only=False):
+def live_ops_payload(data, direct_hosts, direct_domains):
+    snapshot = data.snapshot(False)
+    inventory = data.assets(False)
+    candidates = [asset for asset in inventory["assets"]
+                  if asset["kind"] == "server" and asset.get("product") == "七牛云 QVM" and asset["id"] in direct_hosts]
+    # Associate a direct QVM card only when inventory yields a unique resource identity.
+    connected = [asset for asset in candidates if sum(row["id"] == asset["id"] for row in candidates) == 1]
+    stored_hosts = []
+    for monitor in data.registered_hosts().values():
+        identity = host_identity(monitor)
+        public = monitor.public()
+        if public["provider"] == "qiniu" and public["product"] == "qvm" and identity[2] in direct_hosts:
+            continue
+        asset = next((row for row in inventory["assets"] if row.get("monitor_id") == monitor.id), None)
+        history = data.live.monitor_history(monitor, limit=1)
+        stored_hosts.append({"name": monitor.name, "asset": asset, "observation": history[0] if history else None})
+    websites = {}
+    for monitor in data.monitors.values():
+        domain = urlsplit(monitor.url).hostname
+        if domain in direct_domains:
+            continue
+        history = data.live.monitor_history(monitor, limit=1)
+        run = history[0] if history else None
+        previous = websites.get(domain, {}).get("observation")
+        if domain not in websites or (run and (not previous or run["observed_at"] > previous["observed_at"])):
+            websites[domain] = {"domain": domain, "observation": run, "unavailable": run is None,
+                                "certificate": certificate_status(run) if run else None}
+    return {"source": "live", "inspection": inspection_summary(snapshot["report"]), "items": snapshot["items"],
+            "inventory": inventory, "monitoring": {"hosts": stored_hosts, "websites": list(websites.values()),
+                                                   "connected_host_assets": connected}}
+
+
+def ops_endpoints(state_dir, host_config, website_config, *, hosts_only=False, workbench=None):
     endpoints = {}
+    hosts = None
+    domains = ()
     if host_config is not None:
         from .ops_live_hosts import OpsLiveHosts
 
-        endpoints["/api/ops-live-hosts"] = OpsLiveHosts(load_connections(host_config)).snapshot
+        hosts = OpsLiveHosts(load_connections(host_config))
+        endpoints["/api/ops-live-hosts"] = hosts.snapshot
     if hosts_only:
         endpoints["/api/ops-preview"] = endpoints["/api/ops-live-hosts"]
         return endpoints
-    payload = demo_ops_payload(state_dir)
-    if host_config is not None:
-        payload["live_hosts_enabled"] = True
+    options = {}
+    if hosts:
+        options.update(live_hosts_enabled=True, live_host_count=len(hosts.targets))
     if website_config is not None:
         from .ops_live_websites import OpsLiveWebsites
 
         websites = OpsLiveWebsites(load_monitors(website_config).values())
         endpoints["/api/ops-live-websites"] = websites.snapshot
-        payload["live_websites_enabled"] = True
-        payload["live_website_domains"] = websites.domains
-    endpoints["/api/ops-preview"] = lambda: payload
+        domains = websites.domains
+        options.update(live_websites_enabled=True, live_website_domains=domains)
+    if workbench is None or workbench.development:
+        payload = {**demo_ops_payload(state_dir), **options}
+        endpoints["/api/ops-preview"] = lambda: payload
+    else:
+        direct_hosts = hosts.resource_ids if hosts else set()
+        endpoints["/api/ops-preview"] = lambda: {**live_ops_payload(workbench, direct_hosts, domains), **options}
     return endpoints
 
 
@@ -1182,8 +1225,6 @@ def main():
         if standalone:
             endpoints = ops_endpoints(args.state_dir, args.config if args.ops_live_hosts else None, args.monitor_config,
                                       hosts_only=not args.ops_preview)
-        else:
-            endpoints = ops_endpoints(args.state_dir, args.ops_host_config, args.ops_website_config)
     except (CatalogError, ValueError, OSError) as exc:
         parser.error(str(exc))
     if standalone:
@@ -1197,6 +1238,10 @@ def main():
         return
 
     data = DashboardData(args.state_dir, args.config, args.development, args.monitor_config, args.host_monitor_config)
+    try:
+        endpoints = ops_endpoints(args.state_dir, args.ops_host_config, args.ops_website_config, workbench=data)
+    except (CatalogError, ValueError, OSError) as exc:
+        parser.error(str(exc))
     if args.operation_preview_config:
         data.operations = DashboardOperations.from_file(lambda: load_connections(args.config),
                                                         args.operation_preview_config,

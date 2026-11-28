@@ -20,6 +20,10 @@ const categories = {
   coverage: {order: 1, priority: 'attention', title: '账号漏查'},
   expiry: {order: 2, priority: 'attention', title: '实例到期'},
   balance: {order: 3, priority: 'attention', title: '账号余额不足'},
+  website: {order: 1, priority: 'high', title: '网站检测未通过'},
+  'website-certificate': {order: 2, priority: 'attention', title: '网站证书'},
+  'host-disk': {order: 2, priority: 'attention', title: '服务器磁盘告警'},
+  billing: {order: 3, priority: 'attention', title: '账期费用异常'},
 };
 const priorityLabels = {high: '高优先', attention: '需跟进'};
 let liveTrendPlots = [];
@@ -61,18 +65,18 @@ function barFill(count, total, tone) {
 
 function describeItem(item, inventory) {
   const evidence = item.evidence;
-  const category = categories[evidence.kind];
+  const category = categories[evidence.kind] ?? {order: 4, priority: 'attention', title: '巡检异常'};
   const scopedServers = inventory.filter((asset) => asset.kind === 'server' &&
     asset.account === evidence.account && asset.region === evidence.region);
   let assets = [];
   let missing = false;
   let title = category.title;
-  let target = evidence.account_label;
+  let target = evidence.name || evidence.account_label;
   let detail;
 
   switch (evidence.kind) {
     case 'ssh': {
-      const names = [...new Set(evidence.instances)];
+      const names = [...new Set(evidence.instances ?? [])];
       assets = names.map((name) => uniqueAsset(scopedServers, (asset) => asset.name === name)).filter(Boolean);
       missing = !names.length || assets.length !== names.length;
       target = evidence.name;
@@ -82,10 +86,13 @@ function describeItem(item, inventory) {
       break;
     }
     case 'expiry': {
-      const asset = uniqueAsset(scopedServers, (row) => row.id === evidence.id);
+      const kind = evidence.resource_kind ?? 'server';
+      const asset = uniqueAsset(inventory, (row) => row.kind === kind && row.id === evidence.id
+        && row.account === evidence.account && row.region === evidence.region);
       if (asset) assets = [asset];
       missing = !asset;
-      title = {due: '实例即将到期', expired: '实例已到期', unknown: '实例到期日未知'}[evidence.status];
+      const resource = {domain: '域名', certificate: '证书', server: '实例'}[kind] ?? '资产';
+      title = resource + ({due: '即将到期', expired: '已到期', unknown: '到期日未知'}[evidence.status] ?? '到期异常');
       target = evidence.name;
       detail = evidence.expires_at ? '到期时间 ' + timeLabel(evidence.expires_at) : '未取得到期时间';
       break;
@@ -97,6 +104,20 @@ function describeItem(item, inventory) {
     case 'balance':
       detail = '余额 ' + evidence.amount + ' ' + evidence.currency +
         ' · 提醒线 ' + evidence.threshold + ' ' + evidence.currency;
+      break;
+    case 'website':
+    case 'website-certificate': {
+      const domain = new URL(evidence.name).hostname;
+      const asset = uniqueAsset(inventory, (row) => row.kind === 'domain' && row.name === domain);
+      if (asset) assets = [asset];
+      missing = !asset;
+      detail = evidence.kind === 'website'
+        ? evidence.http_status ? 'HTTP ' + evidence.http_status : '未取得 HTTP 响应'
+        : evidence.status === 'expired' ? '证书已到期' : '证书剩余 ' + evidence.days_remaining + ' 天';
+      break;
+    }
+    case 'host-disk':
+      detail = '磁盘使用率 ' + evidence.used_percent + '% · 阈值 ' + evidence.threshold + '%';
       break;
   }
 
@@ -270,21 +291,28 @@ function renderWebsite(website) {
   return card;
 }
 
-function renderMonitoring({hosts, websites}, assets, mixed, liveWebsites) {
-  const observedAssets = new Set(hosts.filter((host) => host.asset).map((host) => assetIdentity(host.asset)));
+function renderMonitoring({hosts, websites, connected_host_assets = []}, assets, {source, liveHosts, liveDomains, mixed}) {
+  const observedAssets = new Set([...connected_host_assets, ...hosts.map((host) => host.asset)].filter(Boolean).map(assetIdentity));
   const unconnectedHosts = assets.filter((asset) => asset.kind === 'server' && !observedAssets.has(assetIdentity(asset)));
-  const observedDomains = new Set(websites.map((website) => website.domain));
+  const observedDomains = new Set([...websites.map((website) => website.domain), ...liveDomains]);
   const unconnectedDomains = assets.filter((asset) => asset.kind === 'domain' && !observedDomains.has(asset.name));
-  const prefix = mixed ? '模拟 · ' : '';
-  byId('host-monitor-count').textContent = prefix + hosts.length + ' 台已接入 · ' + unconnectedHosts.length + ' 台未接入';
-  if (!liveWebsites) {
-    byId('domain-monitor-count').textContent = prefix + websites.length + ' 个已接入 · ' + unconnectedDomains.length + ' 个未接入';
+  const prefix = source === 'live' ? '真实 · ' : mixed ? '模拟 · ' : '';
+  const hostCount = hosts.length + (source === 'live' ? liveHosts : 0);
+  byId('host-monitor-count').textContent = prefix + hostCount + ' 台已接入 · ' + unconnectedHosts.length + ' 台未接入';
+  if (source === 'live' || !liveDomains.length) {
+    byId('domain-monitor-count').textContent = prefix + observedDomains.size + ' 个已接入 · ' + unconnectedDomains.length + ' 个未接入';
     byId('domain-signals').append(...websites.map(renderWebsite));
   }
 
   for (const host of hosts) {
     const card = monitorCard(host.name, true);
-    const received = host.observation.status === 'pass';
+    const received = host.observation?.status === 'pass';
+    if (source === 'live') {
+      card.append(element('p', 'ops-signal-meta', received ? '已收到采集' : host.observation ? '采集未确认' : '尚无采集记录'));
+      if (host.observation) card.append(monitorTime(host.observation.observed_at));
+      byId('heartbeats').append(card);
+      continue;
+    }
     const pulse = element('div', 'ops-pulse');
     pulse.dataset.tone = received ? 'success' : 'missing';
     pulse.setAttribute('aria-hidden', 'true');
@@ -296,7 +324,7 @@ function renderMonitoring({hosts, websites}, assets, mixed, liveWebsites) {
   }
   for (const [target, unconnected, detail] of [
     ['heartbeats', unconnectedHosts, 'account_label'],
-    ['domain-signals', liveWebsites ? [] : unconnectedDomains, 'registrar'],
+    ['domain-signals', source === 'live' || !liveDomains.length ? unconnectedDomains : [], 'registrar'],
   ]) {
     for (const asset of unconnected) {
       const card = monitorCard(asset.name, false);
@@ -306,14 +334,14 @@ function renderMonitoring({hosts, websites}, assets, mixed, liveWebsites) {
   }
 }
 
-function enableLiveWebsites(domains) {
+function enableLiveWebsites(domains, live) {
   const refresh = byId('refresh-websites');
   const status = byId('live-website-status');
   const count = byId('domain-monitor-count');
   const grid = byId('domain-signals');
   const cards = new Map(domains.map((domain) => [domain, renderWebsite({domain})]));
-  grid.replaceChildren(...cards.values());
-  count.textContent = '真实 · ' + domains.length + ' 个已接入';
+  grid.prepend(...cards.values());
+  if (!live) count.textContent = '真实 · ' + domains.length + ' 个已接入';
   refresh.hidden = false;
   let hasResults = false;
   function updateCard(website) {
@@ -380,8 +408,9 @@ function enableMonitoringMotion() {
   play();
 }
 
-function render({inspection, items, inventory, monitoring, live_hosts_enabled, live_websites_enabled}) {
-  renderMonitoring(monitoring, inventory.assets, live_hosts_enabled || live_websites_enabled, live_websites_enabled);
+function render({inspection, items, inventory, monitoring, source, live_hosts_enabled, live_host_count = 0, live_website_domains = []}) {
+  renderMonitoring(monitoring, inventory.assets, {source, liveHosts: live_host_count,
+    liveDomains: live_website_domains, mixed: live_hosts_enabled || live_website_domains.length});
   const queue = items.filter((item) => item.status === 'open')
     .map((item) => describeItem(item, inventory.assets))
     .sort((first, second) => first.category.order - second.category.order);
@@ -408,7 +437,7 @@ function render({inspection, items, inventory, monitoring, live_hosts_enabled, l
   filter(filters[0]);
 
   const linked = new Set(queue.flatMap((entry) => entry.assets.map(assetIdentity)));
-  byId('asset-count').textContent = linked.size + ' 台';
+  byId('asset-count').textContent = linked.size + ' 项';
   const ranked = queue.filter((entry) => entry.assets.length)
     .sort((first, second) => second.assets.length - first.assets.length);
   for (const entry of ranked) {
@@ -430,6 +459,11 @@ function render({inspection, items, inventory, monitoring, live_hosts_enabled, l
   byId('asset-note').hidden = !byId('asset-note').textContent;
 
   const time = byId('inspection-time');
+  if (inspection.status === 'empty') {
+    time.replaceWith(element('p', 'ops-caption', '还没有真实巡检结果。'));
+    byId('accounts').closest('details').hidden = true;
+    return;
+  }
   time.dateTime = inspection.observed_at;
   time.textContent = timeLabel(inspection.observed_at) + ' · 北京时间';
   byId('coverage-label').textContent = inspection.expected_accounts + ' 个应查账号';
@@ -464,16 +498,17 @@ try {
     enableLiveHosts('/api/ops-preview');
     renderLiveHosts(snapshot.hosts);
   } else {
-    byId('ops-mode').textContent = snapshot.live_hosts_enabled || snapshot.live_websites_enabled
+    byId('ops-mode').textContent = snapshot.source === 'live' ? '真实数据 · 只读'
+      : snapshot.live_hosts_enabled || snapshot.live_websites_enabled
       ? '真实与模拟 · 只读预览' : '模拟数据 · 只读预览';
     render(snapshot);
   }
   byId('preview-state').hidden = true;
   byId('preview').hidden = false;
-  if (snapshot.mode !== 'live-hosts') enableMonitoringMotion();
-  if (snapshot.live_hosts_enabled || snapshot.live_websites_enabled) byId('ops-demo-label').hidden = false;
+  if (snapshot.mode !== 'live-hosts' && snapshot.source !== 'live') enableMonitoringMotion();
+  if (snapshot.source !== 'live' && (snapshot.live_hosts_enabled || snapshot.live_websites_enabled)) byId('ops-demo-label').hidden = false;
   if (snapshot.live_hosts_enabled) enableLiveHosts('/api/ops-live-hosts')();
-  if (snapshot.live_websites_enabled) enableLiveWebsites(snapshot.live_website_domains);
+  if (snapshot.live_websites_enabled) enableLiveWebsites(snapshot.live_website_domains, snapshot.source === 'live');
 } catch (error) {
   byId('preview-state').textContent = '监控数据读取失败，请刷新页面重试。';
   console.error(error);
