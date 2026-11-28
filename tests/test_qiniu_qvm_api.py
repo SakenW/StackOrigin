@@ -222,6 +222,69 @@ class QVMNativeTests(unittest.IsolatedAsyncioTestCase):
         for name in ("eip_by_instance", "vpcs", "common_bandwidth"):
             self.assertEqual(result["coverage"][name]["status"], "observed")
 
+    def test_detail_eip_reconciles_with_the_list_and_bandwidth_coverage(self):
+        path = "/v1/vm/eip"
+        [bound] = self.routes[path]["data"]
+        for detail_id, rows, eip_state, bandwidth_state in (
+            ("eip-fixture", [], "unavailable", "unavailable"),
+            ("eip-detail", [bound], "partial", "partial"),
+            ("", [], "observed", "observed"),
+            ("eip-fixture", [bound], "observed", "observed"),
+        ):
+            with self.subTest(detail_id=detail_id, eip_state=eip_state):
+                self.vm["eip_address"]["allocation_id"] = detail_id
+                self.routes[path] = {"total": len(rows), "data": rows}
+                self.requests.clear()
+                result = self.adapter().inspect("main")
+                eip, bandwidth = (result["coverage"][key] for key in ("eip_by_instance", "common_bandwidth"))
+                self.assertEqual((eip["status"], bandwidth["status"]), (eip_state, bandwidth_state))
+                self.assertEqual([row["allocation_id"] for row in result["data"]["eip_by_instance"]],
+                                 [row["allocation_id"] for row in rows])
+                self.assertEqual(result["status"], "observed" if eip_state == "observed" else "partial")
+                if eip_state != "observed":
+                    self.assertEqual(eip["reason"], "detail_eip_not_listed")
+                    self.assertEqual(bandwidth["reason"], "eip_coverage_incomplete")
+                self.assertEqual(any(route == "/v1/vpc/common_bandwidth" for route, _ in self.requests), bool(rows))
+                self.assertEqual(result["data"]["disks"][0]["disk_id"], "d-fixture")
+                self.assertEqual(result["data"]["vpcs"][0]["vpc_id"], "vpc-fixture")
+
+        def failed_later(params):
+            if params["page"] == ["1"]:
+                return {"total": 2, "size": 1, "data": [bound]}
+            return HTTPError("", 503, "denied", {}, io.BytesIO())
+
+        self.vm["eip_address"]["allocation_id"] = "eip-detail"
+        self.routes[path] = failed_later
+        result = self.adapter().inspect("main")
+        eip = result["coverage"]["eip_by_instance"]
+        self.assertEqual((eip["status"], eip["reason"], eip["pages"], eip["returned_count"]),
+                         ("partial", "http_503", 1, 1))
+        self.assertEqual(result["coverage"]["common_bandwidth"]["status"], "partial")
+
+    def test_asserted_bandwidth_membership_is_reconciled_by_both_ids(self):
+        [eip] = self.routes["/v1/vm/eip"]["data"]
+        eip["bandwidth_package_id"] = "cb-fixture"
+        self.assertEqual(self.adapter().inspect("main")["coverage"]["common_bandwidth"]["status"], "observed")
+
+        path = "/v1/vpc/common_bandwidth"
+        self.routes[path] = {"total": 1, "data": [
+            {"cb_id": "cb-fixture", "region_id": "cn-fixture", "public_address": [{"eip_id": "eip-other"}]},
+        ]}
+        result = self.adapter().inspect("main")
+        self.assertEqual(result["data"]["common_bandwidth"], [])
+        band = result["coverage"]["common_bandwidth"]
+        self.assertEqual((band["status"], band["reason"]), ("unavailable", "eip_bandwidth_not_listed"))
+        self.assertEqual(result["status"], "partial")
+
+        self.routes[path]["data"].append({
+            "cb_id": "cb-other", "region_id": "cn-fixture", "public_address": [{"eip_id": "eip-fixture"}],
+        })
+        self.routes[path]["total"] = 2
+        result = self.adapter().inspect("main")
+        self.assertEqual([row["bandwidth_package_id"] for row in result["data"]["common_bandwidth"]], ["cb-other"])
+        band = result["coverage"]["common_bandwidth"]
+        self.assertEqual((band["status"], band["reason"]), ("partial", "eip_bandwidth_not_listed"))
+
     def test_web_preserves_denied_partial_and_successful_empty_group_coverage(self):
         panel = DashboardData(self.root / "state", self.config, False)
         ingress = "/v1/vm/sgr/sg-fixture/ingress"

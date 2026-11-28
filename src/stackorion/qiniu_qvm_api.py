@@ -132,7 +132,9 @@ class QVMReadAPI:
 
         clean_instance = _instance_fields(instance)
         groups = clean_instance.get("security_groups")
-        related = self._related_resources(instance_id, region, clean_instance.get("vpc_id"))
+        eip_address = clean_instance.get("eip_address")
+        eip_id = eip_address.get("allocation_id") if isinstance(eip_address, dict) else None
+        related = self._related_resources(instance_id, region, clean_instance.get("vpc_id"), eip_id)
         coverage = {"instance": {"status": "observed"}, **related}
         rules = {"security_group_ingress": {}, "security_group_egress": {}}
         if not groups:
@@ -149,7 +151,7 @@ class QVMReadAPI:
                 coverage[f"{direction}:{group}"] = result
         return {"instance": clean_instance, **rules, **related, "coverage": coverage}
 
-    def _related_resources(self, instance_id, region, vpc_id):
+    def _related_resources(self, instance_id, region, vpc_id, detail_eip_id):
         def instance_binding(row):
             if row.get("region_id") == region and row.get("instance_id") == instance_id:
                 return True
@@ -157,6 +159,9 @@ class QVMReadAPI:
 
         eips = _associated(self._collection(EIP_PATH, "allocation_id", region_id=region, instance_id=instance_id),
                            instance_binding)
+        if (isinstance(detail_eip_id, str) and RESOURCE_ID.fullmatch(detail_eip_id)
+                and all(row["allocation_id"] != detail_eip_id for row in eips["data"])):
+            _mark_incomplete(eips, "detail_eip_not_listed")
         disks = _associated(self._collection(DISK_PATH, "disk_id", region_id=region, instance_id=instance_id),
                             instance_binding)
         if vpc_id == "":
@@ -186,9 +191,16 @@ class QVMReadAPI:
             return any(member["eip_id"] in ids for member in members)
 
         result = _associated(self._collection(BANDWIDTH_PATH, "cb_id", region_id=region), membership)
-        if not complete and result["status"] == "observed":
-            result.update(status="partial" if result["data"] else "unavailable",
-                          total=None, reason="eip_coverage_incomplete")
+        confirmed = {(row["cb_id"], member["eip_id"])
+                     for row in result["data"] for member in row["public_address"]}
+        for eip in eips["data"]:
+            package = eip.get("bandwidth_package_id")
+            if (isinstance(package, str) and RESOURCE_ID.fullmatch(package)
+                    and (package, eip["allocation_id"]) not in confirmed):
+                _mark_incomplete(result, "eip_bandwidth_not_listed")
+                break
+        if not complete:
+            _mark_incomplete(result, "eip_coverage_incomplete")
         for row in result["data"]:
             row["bandwidth_package_id"] = row["cb_id"]
             row.setdefault("expired_time", row.get("expire_time"))
@@ -198,6 +210,11 @@ class QVMReadAPI:
 def _empty_collection(reason=None):
     return ({"status": "observed", "total": 0, "returned_count": 0, "pages": 0, "data": []} if reason is None else
             {"status": "unavailable", "reason": reason, "total": None, "returned_count": 0, "pages": 0, "data": []})
+
+
+def _mark_incomplete(collection, reason):
+    collection.update(status="partial" if collection["data"] else "unavailable", total=None)
+    collection.setdefault("reason", reason)
 
 
 def _associated(collection, matches):
