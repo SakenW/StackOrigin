@@ -110,13 +110,17 @@ function queueRow(entry) {
 }
 
 function renderMonitoring({host, website}, assets) {
-  const heartbeat = element('li', 'ops-signal');
-  const hostLabel = element('div', 'ops-signal-name', host.name);
+  const received = host.observation.status === 'pass';
+  const heartbeat = element('li', 'ops-heartbeat');
+  const pulse = element('span', 'ops-pulse');
+  pulse.dataset.tone = received ? 'success' : 'missing';
+  pulse.setAttribute('aria-hidden', 'true');
+  const hostLabel = element('div', 'ops-heartbeat-info');
   const observed = element('time', 'ops-signal-meta', timeLabel(host.observation.observed_at) + ' · 北京时间');
   observed.dateTime = host.observation.observed_at;
-  hostLabel.append(observed);
-  const received = host.observation.status === 'pass';
-  heartbeat.append(hostLabel, received ? badge('心跳已收到', 'success') : badge('采集未确认', 'missing'));
+  hostLabel.append(element('span', 'ops-signal-name', host.name),
+    element('strong', 'ops-heartbeat-status', received ? '心跳已收到' : '采集未确认'), observed);
+  heartbeat.append(pulse, hostLabel);
   byId('heartbeats').append(heartbeat);
 
   const servers = assets.filter((asset) => asset.kind === 'server');
@@ -145,25 +149,40 @@ function renderMonitoring({host, website}, assets) {
     run.phases.http?.ok === false ? ['未响应', 'high'] :
     run.status === 'fail' ? ['异常', 'high'] : unknown;
   for (const domain of assets.filter((asset) => asset.kind === 'domain')) {
-    const row = element('tr', '');
-    const label = element('th', '', domain.name);
-    label.scope = 'row';
+    const row = element('li', 'ops-domain');
+    const label = element('span', 'ops-signal-name', domain.name);
     row.append(label);
     if (domain.name === website.domain) {
-      for (const state of [dns[run.phases.dns?.ok] ?? unknown, https, certificates[website.certificate.status] ?? unknown]) {
-        const cell = element('td', 'ops-domain-state');
-        cell.dataset.tone = state[1];
-        cell.textContent = state[0];
-        row.append(cell);
+      const stages = element('ol', 'ops-probe-path');
+      const checks = [
+        ['DNS', dns[run.phases.dns?.ok] ?? unknown],
+        ['证书', certificates[website.certificate.status] ?? unknown],
+        ['HTTPS', https],
+      ];
+      for (const [name, [status, tone]] of checks) {
+        const stage = element('li', 'ops-probe-stage');
+        stage.dataset.tone = tone;
+        const tile = element('div', 'ops-probe-tile');
+        tile.append(element('span', '', name), element('strong', '', status));
+        stage.append(tile);
+        stages.append(stage);
       }
+      row.append(stages);
     } else {
-      const cell = element('td', 'ops-domain-state', '未接入检测');
-      cell.dataset.tone = 'neutral';
-      cell.colSpan = 3;
-      row.append(cell);
+      row.classList.add('ops-domain-unmonitored');
+      row.append(badge('未接入检测', 'neutral'));
     }
     byId('domain-signals').append(row);
   }
+
+  const replay = byId('replay-monitoring');
+  replay.hidden = false;
+  replay.addEventListener('click', () => {
+    for (const animation of byId('monitoring').getAnimations({subtree: true})) {
+      animation.currentTime = 0;
+      animation.play();
+    }
+  });
 }
 
 function render({inspection, items, inventory, monitoring}) {
