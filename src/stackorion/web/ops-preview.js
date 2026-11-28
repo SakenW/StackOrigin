@@ -1,4 +1,4 @@
-import {metricGroupsFor, mountHostTrend} from '/host-trend.js';
+import {hostStates, metricGroupsFor, mountHostTrend} from '/host-trend.js';
 
 const byId = (id) => document.getElementById(id);
 if (location.pathname === '/ops') {
@@ -312,7 +312,11 @@ function renderMonitoring({hosts, websites, connected_host_assets = []}, assets,
     const card = monitorCard(host.name, true);
     const received = host.observation?.status === 'pass';
     if (source === 'live') {
-      card.append(element('p', 'ops-signal-meta', received ? '已收到采集' : host.observation ? '采集未确认' : '尚无采集记录'));
+      const instanceState = hostStates[host.observation?.resource_state];
+      if (instanceState) card.append(element('strong', '', instanceState));
+      const metricStatus = received ? '已收到采集' : instanceState ? '运行指标未取得'
+        : host.observation ? '采集未确认' : '尚无采集记录';
+      card.append(element('p', 'ops-signal-meta', metricStatus));
       if (host.observation) card.append(monitorTime(host.observation.observed_at));
       byId('heartbeats').append(card);
       continue;

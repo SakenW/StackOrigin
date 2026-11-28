@@ -1,4 +1,7 @@
 // Provider-independent series presentation. The acquisition layer supplies values and units.
+export const hostStates = { available:'云端可用', running:'运行中', stopped:'已停止',
+  starting:'启动中', stopping:'停止中', unavailable:'不可用' };
+
 const hostMetricGroups = [
   { name:'CPU 使用率', icon:'activity', series:[['cpu_percent','CPU']], unit:'%', max:100 },
   { name:'内存使用率', icon:'server', series:[['memory_percent','内存']], unit:'%', max:100 },

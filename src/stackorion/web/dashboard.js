@@ -1,7 +1,7 @@
 import {focusOnboardingAccount} from '/onboarding.js';
 import { showResourceOperation } from '/resource-operation.js';
 import '/storage.js';
-import { formattedSample, metricGroupsFor, mountHostTrend } from '/host-trend.js';
+import { formattedSample, hostStates, metricGroupsFor, mountHostTrend } from '/host-trend.js';
 
 const paths = {
   // Lucide 1.21.0 SVG shapes, distributed with lucide-license.txt.
@@ -2134,8 +2134,6 @@ $('website-pause').addEventListener('click', () => saveWebsiteSchedule(false));
 setInterval(refreshWebsiteSchedules, 5000);
 
 const hostSources = { qvm:'七牛 QVM · 内网', host:'主机只读采集', synthetic:'模拟', 'las-api':'七牛 LAS 只读接口', 'linux-ssh':'Linux SSH · 只读' };
-const hostStates = { available:'云端可用', running:'运行中', stopped:'已停止',
-  starting:'启动中', stopping:'停止中', unavailable:'不可用' };
 let hostRows = [];
 let hostBusy = false;
 let selectedHostInterval;
