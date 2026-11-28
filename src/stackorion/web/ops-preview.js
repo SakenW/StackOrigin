@@ -1,7 +1,16 @@
 import {metricGroupsFor, mountHostTrend} from '/host-trend.js';
 
 const byId = (id) => document.getElementById(id);
-if (location.pathname === '/ops') byId('ops-navigation').hidden = false;
+if (location.pathname === '/ops') {
+  const close = byId('ops-close');
+  close.hidden = false;
+  window.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || event.defaultPrevented || event.isComposing ||
+        event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    event.preventDefault();
+    close.click();
+  });
+}
 const dateTime = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Shanghai',
 });
