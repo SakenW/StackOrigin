@@ -5,3 +5,4 @@ include tools/cloudflare-cli/package.json
 include tools/cloudflare-cli/package-lock.json
 exclude README.md
 prune tests
+include src/stackorion/web/motion-license.txt

@@ -115,9 +115,11 @@ function renderMonitoring({host, website}, assets) {
   const pulse = element('span', 'ops-pulse');
   pulse.dataset.tone = received ? 'success' : 'missing';
   pulse.setAttribute('aria-hidden', 'true');
+  pulse.append(element('span', 'ops-wave'), element('span', 'ops-sweep'));
   const hostLabel = element('div', 'ops-heartbeat-info');
-  const observed = element('time', 'ops-signal-meta', timeLabel(host.observation.observed_at) + ' · 北京时间');
+  const observed = element('time', 'ops-signal-meta', timeLabel(host.observation.observed_at));
   observed.dateTime = host.observation.observed_at;
+  observed.append(element('span', 'ops-time-zone', ' · 北京时间'));
   hostLabel.append(element('span', 'ops-signal-name', host.name),
     element('strong', 'ops-heartbeat-status', received ? '心跳已收到' : '采集未确认'), observed);
   heartbeat.append(pulse, hostLabel);
@@ -162,6 +164,7 @@ function renderMonitoring({host, website}, assets) {
       for (const [name, [status, tone]] of checks) {
         const stage = element('li', 'ops-probe-stage');
         stage.dataset.tone = tone;
+        if (stages.children.length) stage.append(element('span', 'ops-probe-link'));
         const tile = element('div', 'ops-probe-tile');
         tile.append(element('span', '', name), element('strong', '', status));
         stage.append(tile);
@@ -174,15 +177,41 @@ function renderMonitoring({host, website}, assets) {
     }
     byId('domain-signals').append(row);
   }
+}
 
+function enableMonitoringMotion() {
+  const animate = globalThis.Motion?.animate;
+  if (!animate) return;
+  const settings = matchMedia('(prefers-reduced-motion: reduce)');
   const replay = byId('replay-monitoring');
-  replay.hidden = false;
-  replay.addEventListener('click', () => {
-    for (const animation of byId('monitoring').getAnimations({subtree: true})) {
-      animation.currentTime = 0;
-      animation.play();
-    }
+  const monitor = byId('monitoring');
+  const sweep = monitor.querySelector('.ops-pulse[data-tone="success"] .ops-sweep');
+  const sequence = sweep ? [
+    [sweep, {transform: ['translateX(-100%)', 'translateX(100%)'], opacity: [0, 1, 1, 0]},
+      {at: 0, duration: 1.55, ease: 'linear'}],
+  ] : [];
+  [...monitor.querySelectorAll('.ops-probe-stage')].forEach((stage, index) => {
+    const at = .12 + index * .34;
+    const link = stage.querySelector('.ops-probe-link');
+    if (link) sequence.push([link, {transform: ['scaleX(0)', 'scaleX(1)']},
+      {at: at - .19, duration: .22, ease: 'easeOut'}]);
+    sequence.push([stage.querySelector('.ops-probe-tile'),
+      {transform: ['translateY(7px)', 'translateY(0)'], opacity: [.55, 1]},
+      {at, duration: .38, ease: 'easeOut'}]);
   });
+  let timeline;
+  function play() {
+    timeline?.cancel();
+    if (!settings.matches) timeline = animate(sequence);
+  }
+  function updatePreference() {
+    replay.hidden = settings.matches;
+    if (settings.matches) timeline?.cancel();
+  }
+  settings.addEventListener('change', updatePreference);
+  replay.addEventListener('click', play);
+  updatePreference();
+  play();
 }
 
 function render({inspection, items, inventory, monitoring}) {
@@ -261,6 +290,7 @@ try {
   render(await response.json());
   byId('preview-state').hidden = true;
   byId('preview').hidden = false;
+  enableMonitoringMotion();
 } catch (error) {
   byId('preview-state').textContent = '模拟快照读取失败，请刷新页面重试。';
   console.error(error);

@@ -1070,6 +1070,7 @@ class OpsPreviewHandler(DashboardHandler):
         "/": ("ops-preview.html", "text/html; charset=utf-8"),
         "/ops-preview.css": ("ops-preview.css", "text/css; charset=utf-8"),
         "/ops-preview.js": ("ops-preview.js", "text/javascript; charset=utf-8"),
+        "/motion-14.14.0.js": ("motion-14.14.0.js", "text/javascript; charset=utf-8"),
         **{route: ASSETS[route] for route in ("/dashboard.css", "/stackorion-brand.svg", "/favicon.ico")},
     }
 
